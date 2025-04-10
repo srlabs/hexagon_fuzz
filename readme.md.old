@@ -1,0 +1,57 @@
+## Setup
+
+- Clone and checkout fix_boot branch
+```
+git clone ssh://git@ssh.gitlab.srlabs.de:45983/research/baseband_fuzz.git
+
+```
+
+- create qcow:
+
+```
+# create an image
+qemu-img create -f qcow2 dummy.qcow2 32M
+```
+
+- clone the qemu-libafl-bridge:
+```
+cd ..
+git clone ssh://git@ssh.gitlab.srlabs.de:45983/research/qemu-libafl-bridge.git
+cd qemu-libafl-bridge
+git checkout 07bf8c780fcd5eb3b789529a1d1bb407dbdf5baf
+```
+
+- build the qemu-libafl-bridge:
+```
+./configure --cxx=/data/lucag/qemu-libafl-bridge/linker_interceptor++.py --cc=/data/lucag/qemu-libafl-bridge/linker_interceptor.py --as-shared-lib --target-list=hexagon-softmmu --disable-slirp --enable-fdt=internal --audio-drv-list= --disable-alsa --disable-attr --disable-auth-pam --disable-dbus-display --disable-bochs --disable-bpf --disable-brlapi --disable-bsd-user --disable-bzip2 --disable-capstone --disable-cap-ng --disable-canokey --disable-cloop --disable-cocoa --disable-coreaudio --disable-curl --disable-curses --disable-dmg --disable-docs --disable-dsound --disable-fuse --disable-fuse-lseek --disable-gcrypt --disable-gettext --disable-gio --disable-glusterfs --disable-gnutls --disable-gtk --disable-guest-agent --disable-guest-agent-msi --disable-hvf --disable-iconv --disable-jack --disable-keyring --disable-kvm --disable-libdaxctl --disable-libiscsi --disable-libnfs --disable-libpmem --disable-libssh --disable-libudev --disable-libusb --disable-linux-aio --disable-linux-io-uring --disable-linux-user --disable-live-block-migration --disable-lzfse --disable-lzo --disable-l2tpv3 --disable-malloc-trim --disable-mpath --disable-multiprocess --disable-netmap --disable-nettle --disable-numa --disable-nvmm --disable-opengl --disable-oss --disable-pa --disable-parallels --disable-png --disable-pvrdma --disable-qcow1 --disable-qed --disable-qga-vss --disable-rbd --disable-rdma --disable-replication --disable-sdl --disable-sdl-image --disable-seccomp --disable-selinux --disable-slirp-smbd --disable-smartcard --disable-snappy --disable-sndio --disable-sparse --disable-spice --disable-spice-protocol --disable-tools --disable-tpm --disable-usb-redir --disable-user --disable-u2f --disable-vde --disable-vdi --disable-vduse-blk-export --disable-vhost-crypto --disable-vhost-kernel --disable-vhost-net --disable-vhost-user-blk-server --disable-vhost-vdpa --disable-virglrenderer --disable-virtfs --disable-vmnet --disable-vnc --disable-vnc-jpeg --disable-vnc-sasl --disable-vte --disable-vvfat --disable-whpx --disable-xen --disable-xen-pci-passthrough --disable-xkbcommon --disable-zstd
+```
+
+- clone the Libafl repo:
+```
+cd ..
+git clone https://github.com/Aflplusplus/LibAFL
+cd LibAFL
+git checkout 2763d945a334ab08501a19b880286a6b2e595824
+```
+
+- set the `CUSTOM_QEMU_DIR` in `.cargo/config.toml` to the clone qemu-libafl-bridge folder
+```
+cd baseband_fuzz
+vi .cargo/config.toml
+```
+- For the first run set `CUSTOM_QEMU_NO_BUILD = "0"` and `CUSTOM_QEMU_NO_CONFIGURE = "0"` in `.cargo/config.toml`
+- ensure `LibAFL` and `qemu-libafl-bridge` path in `Cargo.toml` is correct 
+- Run the fuzzed with `cargo fuzzd`
+
+## Run input or fuzz
+
+If you want to fuzz, use the "fuzzing" feature in the Cargo.toml and use `cargo fuzzd`.
+If you want to run a specific input, remore the "fuzzing" feature and use `cargo fuzzd <input_path>` 
+
+
+# Seed
+Our endianness is little and we are 32 bit. If he harness writes to a specific register, then the following format can be used to craft a valid seed:
+```bash
+echo -n -e "\x48\x00\x00\x00" > seed
+```
+
