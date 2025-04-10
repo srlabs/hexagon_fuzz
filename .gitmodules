@@ -1,0 +1,3 @@
+[submodule "qemu-libafl-bridge"]
+	path = qemu-libafl-bridge
+	url = ssh://git@ssh.gitlab.srlabs.de:45983/research/qemu-libafl-bridge.git

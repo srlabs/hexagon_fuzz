@@ -1,0 +1,21 @@
+[alias]
+fuzz = "run --release -- -monitor unix:qemu-monitor-socket,server,nowait -kernel ./qdsp6sw.mbn -serial null -nographic -snapshot -S"
+emu = "run --release --no-default-features -- -monitor unix:qemu-monitor-socket,server,nowait -kernel ./qdsp6sw.mbn -serial null -nographic -snapshot -S"
+
+[env]
+# provide path to our custom qemu version
+CUSTOM_QEMU_DIR = { value = "qemu-libafl-bridge", relative = true }
+# prevent qemu from randomly rebuild
+#CUSTOM_QEMU_NO_BUILD = "1"
+# prevent qemu from randomly configuring
+#CUSTOM_QEMU_NO_CONFIGURE = "1"
+# firmware path
+KERNEL = "./qdsp6sw.mbn"
+# speed
+NUM_JOBS = "32"
+
+#QEMU_LOG = "in_asm"
+
+#enable verbose libafl debugging
+LIBAFL_DEBUG_OUTPUT = "1"
+RUST_LOG= "debug"
