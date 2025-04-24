@@ -21,7 +21,6 @@ pub fn main() {
     // Initialize QEMU
     let env: Vec<(String, String)> = env::vars().collect();
     let emu = Emulator::new(&config.qemu_args, &env).unwrap();
-    exit(1);
 
     let devices = emu.list_devices();
     println!("Devices = {devices:?}");
@@ -30,12 +29,12 @@ pub fn main() {
 
     // boot
     unsafe {
-        breakpoints::set_breakpoints(&emu, config);
+        breakpoints::set_breakpoints(&emu, config.clone());
         println!("Breakpoints set");
 
         let _ = emu.run();
         loop {
-            let breakpoint_name = handle_breakpoint(&emu, config).unwrap();
+            let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
             println!("handled breakpoint {breakpoint_name}");
             if breakpoint_name == "app_init_done" {
                 _snap = Some(emu.create_fast_snapshot(true));
@@ -53,7 +52,7 @@ pub fn main() {
         let _ = emu.run();
     }
     loop {
-        let breakpoint_name = handle_breakpoint(&emu, config).unwrap();
+        let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
         println!("handled breakpoint {breakpoint_name}");
 
         unsafe {
