@@ -3,6 +3,7 @@
   "harness_address": "0x0",
   "firmware": "./qdsp6sw.mbn",
   "qemu_args": [
+    "",
     "-monitor",
     "unix:qemu-monitor-socket,server,nowait",
     "-kernel",
