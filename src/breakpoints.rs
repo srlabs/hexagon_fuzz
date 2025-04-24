@@ -1,18 +1,39 @@
+use crate::config::Config;
+use crate::unwinder::{HexagonUnwinder, SymbolMap};
 use libafl_qemu::ArchExtras;
 use libafl_qemu::CallingConvention;
 use libafl_qemu::Emulator;
 use libafl_qemu::Regs;
+use serde::Deserialize;
 use std::process;
 
-type Handler = fn(&Emulator);
-
-#[derive(Debug, Clone)]
-pub struct FirmwareFunction {
-    pub name: String,
-    pub address: u32,
-    pub handler: Handler,
+#[derive(Debug, Clone, Deserialize)]
+pub enum HandlerFunction {
+    HandlePrintln,
+    HandleNextPc,
+    HandleJumpOver,
+    HandleSecondClade,
+    HandleFatalError,
+    HandleZeroingYetAnother,
+    // Add other handlers here
 }
 
+// Implement a method to call the actual handler function
+impl HandlerFunction {
+    pub fn call(&self, emu: &Emulator) {
+        match self {
+            HandlerFunction::HandlePrintln => handle_println(emu),
+            HandlerFunction::HandleNextPc => handle_next_pc(emu),
+            HandlerFunction::HandleJumpOver => handle_jump_over(emu),
+            HandlerFunction::HandleSecondClade => handle_second_clade(emu),
+            HandlerFunction::HandleFatalError => handle_fatal_error(emu),
+            HandlerFunction::HandleZeroingYetAnother => handle_zeroing_yet_another(emu),
+            // Add cases for other handlers
+        }
+    }
+}
+
+/*
 lazy_static! {
     pub static ref BREAKPOINTS: Vec<FirmwareFunction> = vec![
         FirmwareFunction {
@@ -84,6 +105,11 @@ lazy_static! {
             name: "calling_fatal_error".to_string(),
             address: 0xfe1021b4,
             handler: handle_fatal_error,
+        },
+        FirmwareFunction {
+            name: "exception".to_string(),
+            address: 0xfe000008,
+            handler: handle_interrupt,
         },
         /*
         FirmwareFunction {
@@ -159,9 +185,9 @@ lazy_static! {
         */
     ];
 }
-
-pub fn set_breakpoints(emu: &Emulator) {
-    for bp in BREAKPOINTS.iter() {
+*/
+pub fn set_breakpoints(emu: &Emulator, config: Config) {
+    for bp in config.breakpoints.iter() {
         emu.set_breakpoint(bp.address);
     }
 }
@@ -190,9 +216,46 @@ pub fn backtrace(emu: &Emulator) {
     println!("--------------------------");
 }
 
-pub fn _handle_interrupt(_emu: &Emulator) {}
+// Helper function to map register index to Regs enum
+fn index_to_reg(index: u32) -> Option<Regs> {
+    match index {
+        0 => Some(Regs::R0),
+        1 => Some(Regs::R1),
+        2 => Some(Regs::R2),
+        3 => Some(Regs::R3),
+        4 => Some(Regs::R4),
+        5 => Some(Regs::R5),
+        6 => Some(Regs::R6),
+        7 => Some(Regs::R7),
+        8 => Some(Regs::R8),
+        9 => Some(Regs::R9),
+        10 => Some(Regs::R10),
+        11 => Some(Regs::R11),
+        12 => Some(Regs::R12),
+        13 => Some(Regs::R13),
+        14 => Some(Regs::R14),
+        15 => Some(Regs::R15),
+        16 => Some(Regs::R16),
+        17 => Some(Regs::R17),
+        18 => Some(Regs::R18),
+        19 => Some(Regs::R19),
+        20 => Some(Regs::R20),
+        21 => Some(Regs::R21),
+        22 => Some(Regs::R22),
+        23 => Some(Regs::R23),
+        24 => Some(Regs::R24),
+        25 => Some(Regs::R25),
+        26 => Some(Regs::R26),
+        27 => Some(Regs::R27),
+        28 => Some(Regs::R28),
+        29 => Some(Regs::R29),
+        30 => Some(Regs::R30),
+        31 => Some(Regs::R31),
+        _ => None,
+    }
+}
 
-pub fn handle_breakpoint(emu: &Emulator) -> Result<String, String> {
+pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, String> {
     let pcs = (0..emu.num_cpus())
         .map(|i| emu.cpu_from_index(i))
         .map(|cpu| -> Result<u32, String> { cpu.read_reg(Regs::Pc) });
@@ -200,25 +263,22 @@ pub fn handle_breakpoint(emu: &Emulator) -> Result<String, String> {
     //    let pc = pc.unwrap();
     //    println!("pc: {pc:#x}");
     //}
-
     let mut broken_pcs: String = String::new();
     for pc in pcs {
-        for bp in BREAKPOINTS.iter() {
+        for bp in config.breakpoints.iter() {
             if pc.clone().unwrap() == bp.address {
-                (bp.handler)(emu);
+                bp.handler.call(emu);
                 return Ok(bp.name.clone());
             }
         }
         let pc = pc.unwrap();
         broken_pcs.push_str(&format!("{pc:#x} "));
     }
-
     Ok("unexpected break at: ".to_string() + &broken_pcs)
 }
 
 fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
     let mut string: Vec<u8> = vec![0; 100];
-
     unsafe {
         emu.read_mem(ptr, &mut string);
     }
@@ -231,21 +291,17 @@ fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
 }
 
 // HANDLERS
-
 fn handle_println(emu: &Emulator) {
     let format_string =
         read_cstring_from_ptr(emu, emu.current_cpu().unwrap().read_reg(Regs::R0).unwrap());
-
     let a: u32 = emu
         .read_function_argument(CallingConvention::Cdecl, 0)
         .unwrap();
     println!("{a:?}");
-
     // Prepare to parse the arguments
     let mut arg_index = 1; // The first argument is the format string
     let mut args = Vec::new();
     let mut chars = format_string.chars().peekable();
-
     while let Some(c) = chars.next() {
         if c == '%' {
             if let Some(&next_char) = chars.peek() {
@@ -288,7 +344,6 @@ fn handle_println(emu: &Emulator) {
             }
         }
     }
-
     // Construct the formatted output
     let mut formatted_output = format_string.clone();
     for arg in &args {
@@ -296,9 +351,7 @@ fn handle_println(emu: &Emulator) {
         formatted_output = formatted_output.replacen("%s", arg, 1);
         formatted_output = formatted_output.replacen("%x", arg, 1);
     }
-
     println!("INTROSPECTED println | {formatted_output}");
-
     let return_address: u32 = emu.current_cpu().unwrap().read_return_address().unwrap();
     emu.current_cpu()
         .unwrap()
@@ -335,7 +388,7 @@ fn handle_fatal_error(emu: &Emulator) {
     process::exit(1337);
 }
 
-fn handle_zeroing_yetanother(emu: &Emulator) {
+fn handle_zeroing_yet_another(emu: &Emulator) {
     //let mut data = [0;1024];
     //let r4: u32 = emu.read_reg(Regs::R4).unwrap();
     //println!("{r4:?}");

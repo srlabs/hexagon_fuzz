@@ -1,0 +1,88 @@
+{
+  "fuzz": false,
+  "harness_address": "0x0",
+  "firmware": "./qdsp6sw.mbn",
+  "qemu_args": [
+    "-monitor",
+    "unix:qemu-monitor-socket,server,nowait",
+    "-kernel",
+    "./qdsp6sw.mbn",
+    "-serial",
+    "null",
+    "-nographic",
+    "-snapshot",
+    "-S"
+  ],
+  "breakpoints": [
+    {
+      "name": "qurt_println",
+      "address": "0xfe10f2b0",
+      "handler": "HandlePrintln"
+    },
+    {
+      "name": "another_println",
+      "address": "0xc03c96cc",
+      "handler": "HandlePrintln"
+    },
+    {
+      "name": "other_println",
+      "address": "0xc08460e4",
+      "handler": "HandlePrintln"
+    },
+    {
+      "name": "diag_println",
+      "address": "0xbfe8a1f4",
+      "handler": "HandlePrintln"
+    },
+    {
+      "name": "kernel_started",
+      "address": "0xfe10c028",
+      "handler": "HandleNextPc"
+    },
+    {
+      "name": "kernel_init",
+      "address": "0xfe10c0a8",
+      "handler": "HandleNextPc"
+    },
+    {
+      "name": "first_clade",
+      "address": "0xfe10a3ec",
+      "handler": "HandleJumpOver"
+    },
+    {
+      "name": "second_clade",
+      "address": "0xfe10a744",
+      "handler": "HandleSecondClade"
+    },
+    {
+      "name": "zeroeing",
+      "address": "0xc083b9f0",
+      "handler": "HandleJumpOver"
+    },
+    {
+      "name": "app_init_done",
+      "address": "0xfe008274",
+      "handler": "HandleJumpOver"
+    },
+    {
+      "name": "zeroing_yetanother",
+      "address": "0xfe1012b4",
+      "handler": "HandleZeroingYetAnother"
+    },
+    {
+      "name": "fatal_error",
+      "address": "0xfe10ad10",
+      "handler": "HandleFatalError"
+    },
+    {
+      "name": "read_loop_hardware",
+      "address": "0xfe115db0",
+      "handler": "HandleJumpOver"
+    },
+    {
+      "name": "calling_fatal_error",
+      "address": "0xfe1021b4",
+      "handler": "HandleFatalError"
+    }
+  ]
+}
