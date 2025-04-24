@@ -21,8 +21,13 @@ overflow-checks = true
 #libafl_bolts = { path = "../LibAFL/libafl_bolts" }
 #libafl_qemu = { path = "../LibAFL/libafl_qemu", features = ["hexagon", "systemmode"]}
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824" }
-libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824"}
-libafl_qemu = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824", features = ["hexagon", "systemmode"] }
+libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824" }
+libafl_qemu = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824", features = [
+  "hexagon",
+  "systemmode",
+] }
 env_logger = "*"
 lazy_static = "1.4.0"
-
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.140"
+#qapi = { version = "0.15.0", features = ["qmp", "async-tokio"] }

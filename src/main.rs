@@ -1,23 +1,27 @@
 //! A fuzzer using qemu in systemmode for binary-only coverage of kernels
 
-#[macro_use]
 extern crate lazy_static;
 
 use libafl_qemu::{emu::Emulator, Regs};
-use std::env;
+use std::{env, process::exit};
 
 mod breakpoints;
+mod config;
+mod unwinder;
 use breakpoints::handle_breakpoint;
+use config::{parse_config, Config, CONFIG_PATH};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn main() {
     env_logger::init();
+    let config = parse_config(CONFIG_PATH).unwrap();
+    println!("{config:?}");
 
     // Initialize QEMU
-    let args: Vec<String> = env::args().collect();
     let env: Vec<(String, String)> = env::vars().collect();
-    let emu = Emulator::new(&args, &env).unwrap();
+    let emu = Emulator::new(&config.qemu_args, &env).unwrap();
+    exit(1);
 
     let devices = emu.list_devices();
     println!("Devices = {devices:?}");
@@ -26,12 +30,12 @@ pub fn main() {
 
     // boot
     unsafe {
-        breakpoints::set_breakpoints(&emu);
+        breakpoints::set_breakpoints(&emu, config);
         println!("Breakpoints set");
 
         let _ = emu.run();
         loop {
-            let breakpoint_name = handle_breakpoint(&emu).unwrap();
+            let breakpoint_name = handle_breakpoint(&emu, config).unwrap();
             println!("handled breakpoint {breakpoint_name}");
             if breakpoint_name == "app_init_done" {
                 _snap = Some(emu.create_fast_snapshot(true));
@@ -49,7 +53,7 @@ pub fn main() {
         let _ = emu.run();
     }
     loop {
-        let breakpoint_name = handle_breakpoint(&emu).unwrap();
+        let breakpoint_name = handle_breakpoint(&emu, config).unwrap();
         println!("handled breakpoint {breakpoint_name}");
 
         unsafe {
