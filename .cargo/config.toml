@@ -5,9 +5,9 @@ emu = "run --release --no-default-features -- -monitor unix:qemu-monitor-socket,
 [env]
 # provide path to our custom qemu version
 CUSTOM_QEMU_DIR = { value = "qemu-libafl-bridge", relative = true }
-# prevent qemu from randomly rebuild
+# comment out to prevent qemu from randomly rebuild
 #CUSTOM_QEMU_NO_BUILD = "1"
-# prevent qemu from randomly configuring
+# comment out to prevent qemu from randomly configuring
 #CUSTOM_QEMU_NO_CONFIGURE = "1"
 # firmware path
 KERNEL = "./qdsp6sw.mbn"

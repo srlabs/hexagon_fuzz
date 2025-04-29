@@ -1,6 +1,6 @@
 {
   "fuzz": false,
-  "harness_address": "0x0",
+  "fuzz_target_address": "0xbfe0e1c0",
   "firmware": "./qdsp6sw.mbn",
   "qemu_args": [
     "",
@@ -14,7 +14,14 @@
     "-snapshot",
     "-S"
   ],
+  "broker_port": "61337",
+  "timeout_seconds": "3000", 
   "breakpoints": [
+    {
+      "name": "fuzz_target",
+      "address": "0xbfe0e1c0",
+      "handler": "HandleFuzzTarget"
+    },
     {
       "name": "qurt_println",
       "address": "0xfe10f2b0",

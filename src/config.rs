@@ -19,9 +19,11 @@ pub struct FirmwareFunction {
 pub struct Config {
     pub fuzz: bool,
     #[serde(deserialize_with = "hex_string_to_u32")]
-    pub harness_address: u32,
+    pub fuzz_target_address: u32,
     pub firmware: String,
     pub qemu_args: Vec<String>,
+    pub broker_port: String,
+    pub timeout_seconds: String,
     pub breakpoints: Vec<FirmwareFunction>,
 }
 
