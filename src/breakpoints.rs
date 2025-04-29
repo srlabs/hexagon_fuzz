@@ -15,7 +15,6 @@ pub enum HandlerFunction {
     HandleSecondClade,
     HandleFatalError,
     HandleZeroingYetAnother,
-    HandleFuzzTarget,
     // Add other handlers here
 }
 
@@ -29,7 +28,6 @@ impl HandlerFunction {
             HandlerFunction::HandleSecondClade => handle_second_clade(emu),
             HandlerFunction::HandleFatalError => handle_fatal_error(emu),
             HandlerFunction::HandleZeroingYetAnother => handle_zeroing_yet_another(emu),
-            HandlerFunction::HandleFuzzTarget => handle_fuzz_target(emu),
             // Add cases for other handlers
         }
     }
@@ -293,10 +291,6 @@ fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
 }
 
 // HANDLERS
-fn handle_fuzz_target(emu: &Emulator) {
-    emu.remove_breakpoint(emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap());
-}
-
 fn handle_println(emu: &Emulator) {
     let format_string =
         read_cstring_from_ptr(emu, emu.current_cpu().unwrap().read_reg(Regs::R0).unwrap());

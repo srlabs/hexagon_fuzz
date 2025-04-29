@@ -62,6 +62,9 @@ pub fn main() {
     // boot
     unsafe {
         breakpoints::set_breakpoints(&emu, config.clone());
+        if config.fuzz {
+            emu.set_breakpoint(config.fuzz_target_address);
+        }
         println!("Breakpoints set");
 
         let _ = emu.run();

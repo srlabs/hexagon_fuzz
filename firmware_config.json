@@ -18,11 +18,6 @@
   "timeout_seconds": "3000", 
   "breakpoints": [
     {
-      "name": "fuzz_target",
-      "address": "0xbfe0e1c0",
-      "handler": "HandleFuzzTarget"
-    },
-    {
       "name": "qurt_println",
       "address": "0xfe10f2b0",
       "handler": "HandlePrintln"
