@@ -123,8 +123,8 @@ pub fn main() {
     }
     // Fuzz a target function
     else {
-        let timeout = Duration::from_secs(config.timeout_seconds.trim().parse::<u64>().unwrap());
-        let broker_port = config.broker_port.trim().parse::<u16>().unwrap();
+        let timeout = Duration::from_secs(config.timeout_seconds.try_into().unwrap());
+        let broker_port = config.broker_port.try_into().unwrap();
         let cores = Cores::from_cmdline("1").unwrap();
         let corpus_dirs = [PathBuf::from("./corpus")];
         let objective_dir = PathBuf::from("./crashes");
@@ -138,9 +138,7 @@ pub fn main() {
             // snap = Some(emu.create_fast_snapshot(true));
             // println!("Snapshot created for the fuzz target");
 
-            println!("Fuzz target address: {:?}", config.fuzz_target_address);
             let a: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-            println!("Current CPU address: {:?}", a);
             fuzz_target_return_address = emu.current_cpu().unwrap().read_reg(Regs::R31).unwrap();
             println!("Return address of the fuzz target: {:?}", fuzz_target_return_address);   
         }
