@@ -2,3 +2,4 @@ target/
 crashes/
 .DS_Store
 qdsp6sw.mbn
+.direnv
