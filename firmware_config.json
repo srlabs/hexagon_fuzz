@@ -1,6 +1,7 @@
 {
   "fuzz": false,
-  "fuzz_target_address": "0xbfe0e1c0",
+  "fuzz_target_address": "0xc04f1b88",
+  "fuzz_target_return_address": "0xc04f1bf4",
   "firmware": "./qdsp6sw.mbn",
   "qemu_args": [
     "",
@@ -15,7 +16,8 @@
     "-S"
   ],
   "broker_port": "61337",
-  "timeout_seconds": "3000", 
+  "timeout_seconds": "10", 
+  "cores": "3",
   "breakpoints": [
     {
       "name": "qurt_println",
@@ -86,6 +88,26 @@
       "name": "calling_fatal_error",
       "address": "0xfe1021b4",
       "handler": "HandleFatalError"
+    },
+    {
+      "name": "time_ipc_task_started",
+      "address": "0xc04f1b96",
+      "handler": "HandlerEmpty"
+    },
+    {
+      "name": "time_ipc_task_initialized",
+      "address": "0xc04f1bf4",
+      "handler": "HandlerEmpty"
+    },
+    {
+      "name": "time_ipc_connecting_to_service",
+      "address": "0xc04f1c64",
+      "handler": "HandlerEmpty"
+    },
+    {
+      "name": "time_ipc_qmi_client_initialized",
+      "address": "0xc04f1c70",
+      "handler": "HandlerEmpty"
     }
   ]
 }

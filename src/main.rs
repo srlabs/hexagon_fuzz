@@ -39,7 +39,7 @@ use libafl_qemu::{
     emu::Emulator,
     QemuExecutor, QemuHooks, Regs,
 };
-use std::{env, path::PathBuf, process};
+use std::{env, path::PathBuf, process::{self, exit}};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
@@ -57,8 +57,8 @@ pub fn main() {
 
     let mut snap = None;
     let mut fuzz_target_found = false;
-    let mut fuzz_target_return_address = 0;
-
+    let fuzz_target_return_address = config.fuzz_target_return_address;
+    
     // boot
     unsafe {
         breakpoints::set_breakpoints(&emu, config.clone());
@@ -70,14 +70,13 @@ pub fn main() {
         let _ = emu.run();
         loop {
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
-            println!("handled breakpoint {breakpoint_name}");
-           
+            
             if breakpoint_name == "fuzz_target" {
-                println!("reached fuzz target during normal boot");
-                fuzz_target_return_address = emu.current_cpu().unwrap().read_reg(Regs::R31).unwrap();
-                println!("Return address of the fuzz target: {:?}", fuzz_target_return_address);
-                snap = Some(emu.create_fast_snapshot(true));
                 fuzz_target_found = true;
+                println!("reached fuzz target during normal boot");
+                
+                snap = Some(emu.create_fast_snapshot(true));
+                println!("Snapshot created for the fuzz target");
                 break;
             }
            
@@ -128,7 +127,8 @@ pub fn main() {
     else {
         let timeout = Duration::from_secs(config.timeout_seconds.try_into().unwrap());
         let broker_port = config.broker_port.try_into().unwrap();
-        let cores = Cores::from_cmdline("1").unwrap();
+        let mut cores = Cores::all().unwrap();
+        cores.trim(config.cores.try_into().unwrap()).unwrap();
         let corpus_dirs = [PathBuf::from("./corpus")];
         let objective_dir = PathBuf::from("./crashes");
         
@@ -140,10 +140,6 @@ pub fn main() {
                 .unwrap();
             // snap = Some(emu.create_fast_snapshot(true));
             // println!("Snapshot created for the fuzz target");
-
-            let a: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-            fuzz_target_return_address = emu.current_cpu().unwrap().read_reg(Regs::R31).unwrap();
-            println!("Return address of the fuzz target: {:?}", fuzz_target_return_address);   
         }
 
         let mut run_client = |state: Option<_>, mut mgr, _core_id| {
@@ -163,38 +159,24 @@ pub fn main() {
 
                     println!("Setting fuzzer inputs");
                     // this will work for target functions with max. 6 input parameters
-                    let param1: u32 = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-                    let param2: u32 = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
-                    let param3: u32 = u32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]);
-                    let param4: u32 = u32::from_le_bytes([buf[12], buf[13], buf[14], buf[15]]);
-                    let param5: u32 = u32::from_le_bytes([buf[16], buf[17], buf[18], buf[19]]);
-                    let param6: u32 = u32::from_le_bytes([buf[20], buf[21], buf[22], buf[23]]);
+                    let params: Vec<u32> = buf.chunks(4)
+                        .take(6)
+                        .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+                        .collect();
+                    let [param1, param2, param3, param4, param5, param6] = params[..6].try_into().unwrap();
 
                     // Provide the fuzzer input to the target function
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R0, param1)
-                        .unwrap();
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R1, param2)
-                        .unwrap();
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R2, param3)
-                        .unwrap();
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R3, param4)
-                        .unwrap();
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R4, param5)
-                        .unwrap();
-                    emu.current_cpu()
-                        .unwrap()
-                        .write_reg(Regs::R5, param6)
-                        .unwrap();
+                    let cpu = emu.current_cpu().unwrap();
+                    for (reg, param) in [
+                        (Regs::R0, param1),
+                        (Regs::R1, param2), 
+                        (Regs::R2, param3),
+                        (Regs::R3, param4),
+                        (Regs::R4, param5),
+                        (Regs::R5, param6),
+                    ] {
+                        cpu.write_reg(reg, param).unwrap();
+                    }
 
                     // Set breakpoint to the fuzz target's return address
                     emu.set_breakpoint(fuzz_target_return_address);
@@ -208,7 +190,7 @@ pub fn main() {
                         .expect("Failed to get pc");
                     if pc2 == fuzz_target_return_address {
                         println!("Fuzz target return");
-                        emu.restore_fast_snapshot(snap.unwrap());
+                        // emu.restore_fast_snapshot(snap.unwrap());
                     }
                 }
                 ExitKind::Ok
@@ -307,17 +289,7 @@ pub fn main() {
         // The stats reporter for the broker
         let monitor = MultiMonitor::new(|s| println!("{s}"));
 
-        // let monitor = SimpleMonitor::new(|s| println!("{s}"));
-
-        #[cfg(feature = "simplemanager")]
-        use libafl::prelude::SimpleEventManager;
-        #[cfg(feature = "simplemanager")]
-        let mut mgr = SimpleEventManager::new(monitor);
-        #[cfg(feature = "simplemanager")]
-        let ret = run_client(None, mgr, 0);
-
         // Build and run a Launcher
-        #[cfg(not(feature = "simplemanager"))]
         let ret = Launcher::builder()
             .shmem_provider(shmem_provider)
             .broker_port(broker_port)

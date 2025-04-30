@@ -15,6 +15,7 @@ pub enum HandlerFunction {
     HandleSecondClade,
     HandleFatalError,
     HandleZeroingYetAnother,
+    HandlerEmpty
     // Add other handlers here
 }
 
@@ -28,6 +29,7 @@ impl HandlerFunction {
             HandlerFunction::HandleSecondClade => handle_second_clade(emu),
             HandlerFunction::HandleFatalError => handle_fatal_error(emu),
             HandlerFunction::HandleZeroingYetAnother => handle_zeroing_yet_another(emu),
+            HandlerFunction::HandlerEmpty => handler_empty(emu),
             // Add cases for other handlers
         }
     }
@@ -267,6 +269,7 @@ pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, Strin
     for pc in pcs {
         for bp in config.breakpoints.iter() {
             if pc.clone().unwrap() == bp.address {
+                println!("Breakpoint reached: {:?}", bp.name);
                 bp.handler.call(emu);
                 return Ok(bp.name.clone());
             }
@@ -291,13 +294,18 @@ fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
 }
 
 // HANDLERS
+fn handler_empty(emu: &Emulator) {
+    let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+    println!("Empty handler, current address: {:#x}", current_pc);
+}
+
 fn handle_println(emu: &Emulator) {
     let format_string =
         read_cstring_from_ptr(emu, emu.current_cpu().unwrap().read_reg(Regs::R0).unwrap());
     let a: u32 = emu
         .read_function_argument(CallingConvention::Cdecl, 0)
         .unwrap();
-    println!("{a:?}");
+    println!("function argument: {a:#x}");
     // Prepare to parse the arguments
     let mut arg_index = 1; // The first argument is the format string
     let mut args = Vec::new();
