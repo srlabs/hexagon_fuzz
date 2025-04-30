@@ -69,11 +69,13 @@ pub fn main() {
 
         let _ = emu.run();
         loop {
+            let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
             
-            if breakpoint_name == "fuzz_target" {
+            if config.fuzz && current_pc == config.fuzz_target_address {
                 fuzz_target_found = true;
                 println!("reached fuzz target during normal boot");
+                emu.remove_breakpoint(config.fuzz_target_address);
                 
                 snap = Some(emu.create_fast_snapshot(true));
                 println!("Snapshot created for the fuzz target");
