@@ -8,8 +8,15 @@
     nixpkgs,
   }: {
     devShells.x86_64-linux.default = let
-      pkgs = import nixpkgs {system = "x86_64-linux";};
-
+      pkgs = import nixpkgs {
+        system = "x86_64-linux";
+        config = {
+          # This is the key part: add the explicitly allowed insecure package
+          permittedInsecurePackages = [
+            "python-2.7.18.8" # Replace with the exact version from the error message if it differs
+          ];
+        };
+      };
       llvmPkgs = pkgs.llvmPackages;
       deps = with pkgs; [
         rustc
