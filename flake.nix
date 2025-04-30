@@ -11,9 +11,9 @@
       pkgs = import nixpkgs {
         system = "x86_64-linux";
         config = {
-          # This is the key part: add the explicitly allowed insecure package
           permittedInsecurePackages = [
-            "python-2.7.18.8" # Replace with the exact version from the error message if it differs
+            "openssl-1.1.1w"
+            "python-2.7.18.8"
           ];
         };
       };
@@ -24,13 +24,15 @@
         ncurses5
         libcxx
         pixman
+        socat
         glib
         meson
-        python2
+        python27Full
         ninja
         pkg-config
         flex
         bison
+        openssl_1_1
         llvm
         llvmPkgs.clang
         llvmPkgs.libclang

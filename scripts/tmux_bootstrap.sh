@@ -14,7 +14,8 @@ echo "SDK_HOME is set to: $SDK_HOME"
 # 	1
 # 0
 #	2
-tmux new -s baseband -d
+tmux new -s baseband -d -e "SDK_HOME=$SDK_HOME"
+tmux setenv SDK_HOME $SDK_HOME
 tmux split-window -h -t baseband
 tmux split-window -v -t baseband
 
