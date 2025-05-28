@@ -4,10 +4,13 @@
   outputs = {
     self,
     nixpkgs,
-  }: {
-    devShells.x86_64-linux.default = let
+  }: let
+    supportedSystems = ["x86_64-linux" "aarch64-darwin"];
+    forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
+  in {
+    devShells = forAllSystems (system: let
       pkgs = import nixpkgs {
-        system = "x86_64-linux";
+        inherit system;
         config = {
           permittedInsecurePackages = [
             "openssl-1.1.1w"
@@ -36,14 +39,18 @@
         llvmPkgs.libclang
         llvmPkgs.libcxxClang
       ];
-    in
-      pkgs.mkShell {
+    in {
+      default = pkgs.mkShell {
         buildInputs = deps;
-        shellHook = ''
+        shellHook = if pkgs.stdenv.isDarwin then ''
+          export LIBCLANG_PATH="${builtins.toString llvmPkgs.libclang.lib}/lib";
+          export PATH="$PATH:${pkgs.rustc}/bin:${pkgs.cargo}/bin";
+        '' else ''
           export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath deps)}:${pkgs.openssl_1_1}/lib";
           export LIBCLANG_PATH="${builtins.toString llvmPkgs.libclang.lib}/lib";
           export PATH="$PATH:${pkgs.rustc}/bin:${pkgs.cargo}/bin";
         '';
       };
+    });
   };
 }
