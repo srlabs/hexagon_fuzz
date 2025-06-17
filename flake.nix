@@ -46,7 +46,7 @@
           export LIBCLANG_PATH="${builtins.toString llvmPkgs.libclang.lib}/lib";
           export PATH="$PATH:${pkgs.rustc}/bin:${pkgs.cargo}/bin";
         '' else ''
-          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath deps)}:${pkgs.openssl_1_1}/lib";
+          export LD_LIBRARY_PATH="$LD_LIBRARY_PATH:${builtins.toString (pkgs.lib.makeLibraryPath deps)}";
           export LIBCLANG_PATH="${builtins.toString llvmPkgs.libclang.lib}/lib";
           export PATH="$PATH:${pkgs.rustc}/bin:${pkgs.cargo}/bin";
         '';
