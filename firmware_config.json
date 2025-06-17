@@ -13,7 +13,7 @@
     "null",
     "-nographic",
     "-snapshot",
-    "-S"
+    "-S",
     "-s"
   ],
   "broker_port": "61337",

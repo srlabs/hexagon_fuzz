@@ -25,8 +25,10 @@ tmux send-keys -t baseband:0.1 './target/release/baseband_fuzz' C-m
 sleep 1
 
 # Setup LLDB
-tmux send-keys -t baseband:0.0 '$SDK_HOME/bin/hexagon-lldb' C-m
-tmux send-keys -t baseband:0.0 'command script import /data/lucag/qemu-libafl-bridge/HexQEMU.py' C-m
+tmux send-keys -t baseband:0.0 'bash' C-m
+tmux send-keys -t baseband:0.0 'source $SDK_HOME/setup_sdk_env.source' C-m
+tmux send-keys -t baseband:0.0 '$SDK_HOME/tools/HEXAGON_Tools/8.7.06/Tools/bin/hexagon-lldb' C-m
+tmux send-keys -t baseband:0.0 'command script import ./HexQEMU.py' C-m
 tmux send-keys -t baseband:0.0 'target create qdsp6sw.mbn' C-m
 tmux send-keys -t baseband:0.0 'gdb-remote localhost:1234' C-m
 
