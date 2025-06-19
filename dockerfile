@@ -37,7 +37,6 @@ WORKDIR /fuzz
 COPY Cargo.toml .
 COPY .cargo ./.cargo
 COPY firmware_config.json .
-COPY fuzz.sh .
 COPY qdsp6sw.mbn .
 COPY qemu-libafl-bridge ./qemu-libafl-bridge
 COPY rust-toolchain.toml .
