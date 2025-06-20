@@ -9,7 +9,7 @@ cd qemu-libafl-bridge
 mkdir build
 cd build
 ../configure --target-list=hexagon-softmmu --disable-dbus-display
-make
+make -j32
 ```
 This will create the `qemu-system-hexagon` binary under `build`
 

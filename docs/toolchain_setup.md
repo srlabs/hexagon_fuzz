@@ -20,7 +20,7 @@ A diagnostic tool used for debugging, monitoring, and analyzing Qualcomm-based d
 QXDM can be used to view logs, for real-time monitoring, collecting diagnostic data or sending AT commands.
 
 ## Manually fixing the qemu-libafl-bridge for hexagon code
-If it is required to fix some code in [qemu-libafl-bridge](https://github.com/AFLplusplus/qemu-libafl-bridge) to get the hexagon emulation work, this needs to be done manually by picking the right code from [quic/qemu](https://github.com/quic/qemu). Search for the branch `hexagon_sysemu_*` and select the version that is closest to the branch in `qemu-libafl-bridge` and merge/cherry pick the fix.
+If it is required to fix some code in [qemu-libafl-bridge](https://github.com/AFLplusplus/qemu-libafl-bridge) to get the hexagon emulation work, this needs to be done [manually](./qemu-hexagon.md) by picking the right code from [quic/qemu](https://github.com/quic/qemu). Search for the branch `hexagon_sysemu_*` and select the version that is closest to the branch in `qemu-libafl-bridge` and merge/cherry pick the fix.
 
 
 ## Available Qualcomm Documentation
