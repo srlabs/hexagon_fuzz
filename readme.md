@@ -1,16 +1,29 @@
 # Setup
 
-## Clone and fetch the qemu submodule
+## Install dependencies on Ubuntu
 ```bash
-git clone ssh://git@ssh.gitlab.srlabs.de:45983/research/baseband_fuzz.git
+sudo apt install python3 python3-pip python3-sphinx python3-sphinx-rtd-theme ninja-build libglib2.0-dev flex bison clang rustup
+```
+
+## Clone the repo and fetch the qemu submodule
+```bash
+git clone https://github.com/srlabs/baseband_fuzz.git
 git submodule update --init
 ```
 
-## Run input or fuzz
+## Tmux script
+- Set the `SDK_HOME` env variable to the path of Hexagon SDK
+- Run the `scripts/tmux_bootstrap.sh` to start the emulation and attach a LLDB for debugging
 
-If you want to fuzz, use `cargo fuzz`.
-If you want to run a specific input, remore the "fuzzing" feature and use `cargo emu <input_path>` 
-
+## Steps for fuzzing 
+- Set the `SDK_HOME` env variable to the path of Hexagon SDK
+- Set `"fuzz": true` in the `firmware_config.json`
+- Set the fuzz target start and return address in `firmware_config.json`
+- Run the fuzzer:
+```bash
+cargo build --release
+./target/release/baseband_fuzz
+```
 
 ## Docker setup
 - Build and run the docker image
@@ -18,7 +31,7 @@ If you want to run a specific input, remore the "fuzzing" feature and use `cargo
 docker build -t baseband_fuzz .
 docker run -it baseband_fuzz
 ```
-- Build and run the fuzzer
+- Build and run the fuzzer inside the docker container
 ```bash
 cargo build --release
 ./target/release/baseband_fuzz
