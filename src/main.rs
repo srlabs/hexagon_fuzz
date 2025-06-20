@@ -101,7 +101,7 @@ pub fn main() {
         }
         loop {
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
-            println!("handled breakpoint {breakpoint_name}");
+            println!("handled breakpoint: {breakpoint_name}");
 
             unsafe {
                 let _ = emu.run();
@@ -272,7 +272,7 @@ pub fn main() {
                         println!("Failed to load initial corpus at {:?}", &corpus_dirs);
                         process::exit(0);
                     });
-                println!("We imported {} inputs from disk.", state.corpus().count());
+                println!("Imported {} inputs from disk.", state.corpus().count());
             }
 
             // Setup an havoc mutator with a mutational stage

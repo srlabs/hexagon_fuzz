@@ -132,10 +132,10 @@ fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
         emu.read_mem(ptr, &mut string);
     }
     let string = std::str::from_utf8(&string)
-        .unwrap_or("bruno's shitty parsing")
+        .unwrap_or("Invalid utf-8 string")
         .split('\0')
         .next()
-        .unwrap_or("bruno's shitty parsing2");
+        .unwrap_or("Invalid or unterminated C-string");
     string.to_owned()
 }
 
