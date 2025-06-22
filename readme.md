@@ -15,7 +15,7 @@ git submodule update --init
 - Set the `SDK_HOME` env variable to the path of Hexagon SDK
 - Run the `scripts/tmux_bootstrap.sh` to start the emulation and attach a LLDB for debugging
 
-## Steps for fuzzing 
+## Steps for fuzzing
 - Set the `SDK_HOME` env variable to the path of Hexagon SDK
 - Set `"fuzz": true` in the `firmware_config.json`
 - Set the fuzz target start and return address in `firmware_config.json`
@@ -24,6 +24,9 @@ git submodule update --init
 cargo build --release
 ./target/release/baseband_fuzz
 ```
+
+After building it once, you can skip re-building/re-configuring the QEMU submodule by setting the environment variables `CUSTOM_QEMU_NO_BUILD = "1"` and `CUSTOM_QEMU_NO_CONFIGURE = "1"`.
+This can also be done in .cargo/config.toml if using cargo.
 
 ## Docker setup
 - Build and run the docker image
@@ -37,3 +40,5 @@ cargo build --release
 ./target/release/baseband_fuzz
 ```
 
+## Documentation
+Some documentation around reversing, setting up the tooling, emulation and more can be found in the [docs directory](./docs/index.md)
