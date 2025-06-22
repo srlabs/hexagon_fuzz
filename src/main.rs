@@ -1,7 +1,5 @@
 //! A fuzzer using qemu in systemmode for binary-only coverage of kernels
 
-extern crate lazy_static;
-
 mod breakpoints;
 mod config;
 use breakpoints::handle_breakpoint;
@@ -9,6 +7,7 @@ use config::{parse_config, CONFIG_PATH};
 
 use core::{ptr::addr_of_mut, time::Duration};
 
+use env_logger::Env;
 use libafl::{
     corpus::{Corpus, InMemoryCorpus, OnDiskCorpus},
     events::{launcher::Launcher, EventConfig},
@@ -48,7 +47,7 @@ use std::{
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn main() {
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     let config = parse_config(CONFIG_PATH).unwrap();
     debug!("{config:?}");
 

@@ -3,7 +3,7 @@ use libafl_qemu::ArchExtras;
 use libafl_qemu::CallingConvention;
 use libafl_qemu::Emulator;
 use libafl_qemu::Regs;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use serde::Deserialize;
 use std::process;
 

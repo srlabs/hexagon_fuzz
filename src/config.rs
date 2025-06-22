@@ -20,7 +20,6 @@ pub struct Config {
     pub fuzz_target_address: u32,
     #[serde(deserialize_with = "hex_address_string_to_u32")]
     pub fuzz_target_return_address: u32,
-    pub firmware: String,
     pub qemu_args: Vec<String>,
     #[serde(deserialize_with = "hex_string_to_u32")]
     pub broker_port: u32,

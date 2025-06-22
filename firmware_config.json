@@ -2,7 +2,6 @@
   "fuzz": true,
   "fuzz_target_address": "0xfe104330",
   "fuzz_target_return_address": "0xfe1043f4",
-  "firmware": "./qdsp6sw.mbn",
   "qemu_args": [
     "",
     "-monitor",
@@ -17,7 +16,7 @@
     "-s"
   ],
   "broker_port": "61337",
-  "timeout_seconds": "1", 
+  "timeout_seconds": "1",
   "cores": "3",
   "breakpoints": [
     {
