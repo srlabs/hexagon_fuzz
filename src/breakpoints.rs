@@ -3,6 +3,7 @@ use libafl_qemu::ArchExtras;
 use libafl_qemu::CallingConvention;
 use libafl_qemu::Emulator;
 use libafl_qemu::Regs;
+use log::{debug, error, info, warn};
 use serde::Deserialize;
 use std::process;
 
@@ -40,13 +41,13 @@ pub fn set_breakpoints(emu: &Emulator, config: Config) {
 }
 
 pub fn backtrace(emu: &Emulator) {
-    println!("--------------------------");
-    println!("BACKTRACE");
+    error!("--------------------------");
+    error!("BACKTRACE");
     let mut frame_pointer: u32 = emu.current_cpu().unwrap().read_reg(Regs::R30).unwrap();
     let mut return_address: u32 = emu.current_cpu().unwrap().read_reg(Regs::R31).unwrap();
     if frame_pointer != 0 {
         while return_address != 0 {
-            println!("{return_address:#x}");
+            error!("{return_address:#x}");
             let mut buf = [0, 0, 0, 0];
             unsafe {
                 emu.read_mem(frame_pointer, &mut buf);
@@ -58,9 +59,9 @@ pub fn backtrace(emu: &Emulator) {
             frame_pointer = u32::from_be_bytes(buf);
         }
     } else {
-        println!("{return_address:#x}");
+        error!("{return_address:#x}");
     };
-    println!("--------------------------");
+    error!("--------------------------");
 }
 
 // Helper function to map register index to Regs enum
@@ -108,13 +109,13 @@ pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, Strin
         .map(|cpu| -> Result<u32, String> { cpu.read_reg(Regs::Pc) });
     //for pc in pcs.clone() {
     //    let pc = pc.unwrap();
-    //    println!("pc: {pc:#x}");
+    //    debug!("pc: {pc:#x}");
     //}
     let mut broken_pcs: String = String::new();
     for pc in pcs {
         for bp in config.breakpoints.iter() {
             if pc.clone().unwrap() == bp.address {
-                println!("Breakpoint reached: {:?}", bp.name);
+                info!("Breakpoint reached: {:?}", bp.name);
                 bp.handler.call(emu);
                 return Ok(bp.name.clone());
             }
@@ -141,7 +142,7 @@ fn read_cstring_from_ptr(emu: &Emulator, ptr: u32) -> String {
 // HANDLERS
 fn handler_empty(emu: &Emulator) {
     let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-    println!("Empty handler, current address: {:#x}", current_pc);
+    debug!("Empty handler, current address: {:#x}", current_pc);
 }
 
 fn handle_println(emu: &Emulator) {
@@ -150,7 +151,7 @@ fn handle_println(emu: &Emulator) {
     let a: u32 = emu
         .read_function_argument(CallingConvention::Cdecl, 0)
         .unwrap();
-    println!("function argument: {a:#x}");
+    debug!("function argument: {a:#x}");
     // Prepare to parse the arguments
     let mut arg_index = 1; // The first argument is the format string
     let mut args = Vec::new();
@@ -204,7 +205,7 @@ fn handle_println(emu: &Emulator) {
         formatted_output = formatted_output.replacen("%s", arg, 1);
         formatted_output = formatted_output.replacen("%x", arg, 1);
     }
-    println!("INTROSPECTED println | {formatted_output}");
+    info!("INTROSPECTED println | {formatted_output}");
     let return_address: u32 = emu.current_cpu().unwrap().read_return_address().unwrap();
     emu.current_cpu()
         .unwrap()
@@ -218,11 +219,11 @@ fn handle_jump_over(emu: &Emulator) {
         .unwrap()
         .write_reg(Regs::Pc, return_address)
         .unwrap();
-    println!("jumping over to: {return_address:#x}");
+    debug!("jumping over to: {return_address:#x}");
 }
 
 fn handle_second_clade(emu: &Emulator) {
-    println!("Handling another clade");
+    debug!("Handling another clade");
     let _ = emu.write_reg(Regs::R3, 28u32);
 }
 
@@ -233,20 +234,20 @@ fn handle_next_pc(emu: &Emulator) {
         .unwrap()
         .write_reg(Regs::Pc, next_pc)
         .unwrap();
-    println!("Jumping to next PC: {next_pc:#x}");
+    debug!("Jumping to next PC: {next_pc:#x}");
 }
 
 fn handle_fatal_error(emu: &Emulator) {
-    println!("FATAL ERROR!");
+    error!("FATAL ERROR!");
     backtrace(emu);
-    println!("Exiting with 1337...");
+    error!("Exiting with 1337...");
     process::exit(1337);
 }
 
 fn handle_zeroing_yet_another(emu: &Emulator) {
     //let mut data = [0;1024];
     //let r4: u32 = emu.read_reg(Regs::R4).unwrap();
-    //println!("{r4:?}");
+    //debug!("{r4:?}");
     //emu.read_mem(0xfe0125f0, &mut data);
     emu.current_cpu()
         .unwrap()

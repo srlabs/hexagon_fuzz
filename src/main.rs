@@ -38,6 +38,7 @@ use libafl_qemu::{
     emu::Emulator,
     QemuExecutor, QemuHooks, Regs,
 };
+use log::{debug, error, info, warn};
 use std::{
     env,
     path::PathBuf,
@@ -49,14 +50,14 @@ pub static mut MAX_INPUT_SIZE: usize = 50;
 pub fn main() {
     env_logger::init();
     let config = parse_config(CONFIG_PATH).unwrap();
-    println!("{config:?}");
+    debug!("{config:?}");
 
     // Initialize QEMU
     let env: Vec<(String, String)> = env::vars().collect();
     let emu = Emulator::new(&config.qemu_args, &env).unwrap();
 
     let devices = emu.list_devices();
-    println!("Devices = {devices:?}");
+    debug!("Devices = {devices:?}");
 
     let mut snap = None;
     let mut fuzz_target_found = false;
@@ -68,7 +69,7 @@ pub fn main() {
         if config.fuzz {
             emu.set_breakpoint(config.fuzz_target_address);
         }
-        println!("Breakpoints set");
+        info!("Breakpoints set");
 
         let _ = emu.run();
         loop {
@@ -77,16 +78,16 @@ pub fn main() {
 
             if config.fuzz && current_pc == config.fuzz_target_address {
                 fuzz_target_found = true;
-                println!("reached fuzz target during normal boot");
+                info!("reached fuzz target during normal boot");
                 emu.remove_breakpoint(config.fuzz_target_address);
 
                 snap = Some(emu.create_fast_snapshot(true));
-                println!("Snapshot created for the fuzz target");
+                info!("Snapshot created for the fuzz target");
                 break;
             }
 
             if breakpoint_name == "app_init_done" {
-                println!("app init done, creating snapshot at: {current_pc:#x}");
+                info!("app init done, creating snapshot at: {current_pc:#x}");
                 snap = Some(emu.create_fast_snapshot(true));
                 break;
             }
@@ -97,14 +98,14 @@ pub fn main() {
     // Boot execution till adventures
     if !config.fuzz {
         let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-        println!("lets go for adventures");
-        println!("current pc: {current_pc:#x}");
+        info!("lets go for adventures");
+        info!("current pc: {current_pc:#x}");
         unsafe {
             let _ = emu.run();
         }
         loop {
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
-            println!("handled breakpoint: {breakpoint_name}");
+            debug!("handled breakpoint: {breakpoint_name}");
             unsafe {
                 let _ = emu.run();
             }
@@ -121,16 +122,16 @@ pub fn main() {
 
         if !fuzz_target_found {
             if let Some(snap) = snap {
-                println!("restoring stable state");
+                debug!("restoring stable state");
                 emu.restore_fast_snapshot(snap);
             }
-            println!("Target function was not reached during normal boot. jumping there !!!");
+            warn!("Target function was not reached during normal boot. jumping there !!!");
             emu.current_cpu()
                 .unwrap()
                 .write_reg(Regs::Pc, config.fuzz_target_address)
                 .unwrap();
             snap = Some(emu.create_fast_snapshot(true));
-            println!("Snapshot created for the fuzz target");
+            info!("Snapshot created for the fuzz target");
         }
 
         let mut run_client = |state: Option<_>, mut mgr, _core_id| {
@@ -151,7 +152,7 @@ pub fn main() {
                         return ExitKind::Ok;
                     }
 
-                    // println!("Setting fuzzer inputs");
+                    // debug!("Setting fuzzer inputs");
                     // this will work for target functions with max. 6 input parameters
                     let params: Vec<u32> = buf
                         .chunks(4)
@@ -176,7 +177,7 @@ pub fn main() {
 
                     // Set breakpoint to the fuzz target's return address
                     emu.set_breakpoint(fuzz_target_return_address);
-                    // println!("Running the fuzzer on the target function");
+                    // debug!("Running the fuzzer on the target function");
                     emu.run().unwrap();
 
                     let pc2: u32 = emu
@@ -185,7 +186,7 @@ pub fn main() {
                         .read_reg(Regs::Pc)
                         .expect("Failed to get pc");
                     if pc2 == fuzz_target_return_address {
-                        println!("Fuzz target return");
+                        debug!("Fuzz target return");
                         // emu.restore_fast_snapshot(snap.unwrap());
                     }
                 }
@@ -263,10 +264,10 @@ pub fn main() {
                 state
                     .load_initial_inputs_forced(&mut fuzzer, &mut executor, &mut mgr, &corpus_dirs)
                     .unwrap_or_else(|_| {
-                        println!("Failed to load initial corpus at {:?}", &corpus_dirs);
+                        error!("Failed to load initial corpus at {:?}", &corpus_dirs);
                         process::exit(0);
                     });
-                println!("Imported {} inputs from disk.", state.corpus().count());
+                info!("Imported {} inputs from disk.", state.corpus().count());
             }
 
             // Setup an havoc mutator with a mutational stage
@@ -283,7 +284,7 @@ pub fn main() {
         let shmem_provider = StdShMemProvider::new().expect("Failed to init shared memory");
 
         // The stats reporter for the broker
-        let monitor = MultiMonitor::new(|s| println!("{s}"));
+        let monitor = MultiMonitor::new(|s| info!("{s}"));
 
         // Build and run a Launcher
         let ret = Launcher::builder()
@@ -299,7 +300,7 @@ pub fn main() {
 
         match ret {
             Ok(()) => (),
-            Err(Error::ShuttingDown) => println!("Fuzzing stopped by user. Good bye."),
+            Err(Error::ShuttingDown) => info!("Fuzzing stopped by user. Good bye."),
             Err(err) => panic!("Failed to run launcher: {err:?}"),
         }
     }
