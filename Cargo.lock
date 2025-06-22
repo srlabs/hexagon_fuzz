@@ -141,7 +141,6 @@ name = "baseband_fuzz"
 version = "0.1.0"
 dependencies = [
  "env_logger",
- "lazy_static",
  "libafl",
  "libafl_bolts",
  "libafl_qemu",

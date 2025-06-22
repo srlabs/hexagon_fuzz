@@ -64,45 +64,6 @@ pub fn backtrace(emu: &Emulator) {
     error!("--------------------------");
 }
 
-// Helper function to map register index to Regs enum
-fn index_to_reg(index: u32) -> Option<Regs> {
-    match index {
-        0 => Some(Regs::R0),
-        1 => Some(Regs::R1),
-        2 => Some(Regs::R2),
-        3 => Some(Regs::R3),
-        4 => Some(Regs::R4),
-        5 => Some(Regs::R5),
-        6 => Some(Regs::R6),
-        7 => Some(Regs::R7),
-        8 => Some(Regs::R8),
-        9 => Some(Regs::R9),
-        10 => Some(Regs::R10),
-        11 => Some(Regs::R11),
-        12 => Some(Regs::R12),
-        13 => Some(Regs::R13),
-        14 => Some(Regs::R14),
-        15 => Some(Regs::R15),
-        16 => Some(Regs::R16),
-        17 => Some(Regs::R17),
-        18 => Some(Regs::R18),
-        19 => Some(Regs::R19),
-        20 => Some(Regs::R20),
-        21 => Some(Regs::R21),
-        22 => Some(Regs::R22),
-        23 => Some(Regs::R23),
-        24 => Some(Regs::R24),
-        25 => Some(Regs::R25),
-        26 => Some(Regs::R26),
-        27 => Some(Regs::R27),
-        28 => Some(Regs::R28),
-        29 => Some(Regs::R29),
-        30 => Some(Regs::R30),
-        31 => Some(Regs::R31),
-        _ => None,
-    }
-}
-
 pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, String> {
     let pcs = (0..emu.num_cpus())
         .map(|i| emu.cpu_from_index(i))

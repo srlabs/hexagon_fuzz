@@ -17,8 +17,7 @@ libafl_qemu = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a3
     "hexagon",
     "systemmode",
 ] }
-env_logger = "0.11.8"
-lazy_static = "1.4.0"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
-log = "0.4.27"
+env_logger = { version = "0.11.8" }
+serde = { version = "1.0.219", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0.140", default-features = false }
+log = { version = "0.4.27", default-features = false}
