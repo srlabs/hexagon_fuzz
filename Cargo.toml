@@ -3,12 +3,6 @@ name = "baseband_fuzz"
 version = "0.1.0"
 edition = "2021"
 
-[features]
-default = ["std", "fuzzing"]
-std = []
-simplemanager = []
-fuzzing = []
-
 [profile.release]
 incremental = true
 debug = true
@@ -17,18 +11,14 @@ codegen-units = 1
 overflow-checks = true
 
 [dependencies]
-#libafl = { path = "../LibAFL/libafl" }
-#libafl_bolts = { path = "../LibAFL/libafl_bolts" }
-#libafl_qemu = { path = "../LibAFL/libafl_qemu", features = ["hexagon", "systemmode"]}
 libafl = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824" }
 libafl_bolts = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824" }
 libafl_qemu = { git = "https://github.com/AFLplusplus/LibAFL", rev = "2763d945a334ab08501a19b880286a6b2e595824", features = [
-  "hexagon",
-  "systemmode",
+    "hexagon",
+    "systemmode",
 ] }
-env_logger = "*"
+env_logger = "0.11.8"
 lazy_static = "1.4.0"
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 log = "0.4.27"
-#qapi = { version = "0.15.0", features = ["qmp", "async-tokio"] }
