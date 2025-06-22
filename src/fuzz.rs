@@ -1,12 +1,7 @@
-use crate::{
-    breakpoints::handle_breakpoint,
-    config::{parse_config, Config, CONFIG_PATH},
-    MAX_INPUT_SIZE,
-};
+use crate::{config::Config, MAX_INPUT_SIZE};
 
 use core::{ptr::addr_of_mut, time::Duration};
 
-use env_logger::Env;
 use libafl::{
     corpus::{Corpus, InMemoryCorpus, OnDiskCorpus},
     events::{launcher::Launcher, EventConfig},
@@ -36,9 +31,8 @@ use libafl_qemu::{
     emu::Emulator,
     FastSnapshot, QemuExecutor, QemuHooks, Regs,
 };
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use std::{
-    env,
     path::PathBuf,
     process::{self},
 };
@@ -53,60 +47,7 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
 
     let mut run_client = |state: Option<_>, mut mgr, _core_id| {
         // The wrapped fuzz target function, calling out to the LLVM-style harness
-        let mut harness = |input: &BytesInput| {
-            emu.restore_fast_snapshot(snap);
-            let target = input.target_bytes();
-            let mut buf = target.as_slice();
-            let len = buf.len();
-            unsafe {
-                if len > MAX_INPUT_SIZE {
-                    buf = &buf[0..MAX_INPUT_SIZE];
-                }
-
-                if len < 24 {
-                    return ExitKind::Ok;
-                }
-
-                // debug!("Setting fuzzer inputs");
-                // this will work for target functions with max. 6 input parameters
-                let params: Vec<u32> = buf
-                    .chunks(4)
-                    .take(6)
-                    .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
-                    .collect();
-                let [param1, param2, param3, param4, param5, param6] =
-                    params[..6].try_into().unwrap();
-
-                // Provide the fuzzer input to the target function
-                let cpu = emu.current_cpu().unwrap();
-                for (reg, param) in [
-                    (Regs::R0, param1),
-                    (Regs::R1, param2),
-                    (Regs::R2, param3),
-                    (Regs::R3, param4),
-                    (Regs::R4, param5),
-                    (Regs::R5, param6),
-                ] {
-                    cpu.write_reg(reg, param).unwrap();
-                }
-
-                // Set breakpoint to the fuzz target's return address
-                emu.set_breakpoint(config.fuzz_target_return_address);
-                // debug!("Running the fuzzer on the target function");
-                emu.run().unwrap();
-
-                let pc2: u32 = emu
-                    .current_cpu()
-                    .unwrap()
-                    .read_reg(Regs::Pc)
-                    .expect("Failed to get pc");
-                if pc2 == config.fuzz_target_return_address {
-                    debug!("Fuzz target return");
-                    // emu.restore_fast_snapshot(snap.unwrap());
-                }
-            }
-            ExitKind::Ok
-        };
+        let mut wrapped_harness = |input: &BytesInput| harness(&config, &emu, snap, input);
 
         // Create an observation channel using the coverage map
         let edges_observer = unsafe {
@@ -162,7 +103,7 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
         // Create a QEMU in-process executor
         let mut executor = QemuExecutor::new(
             &mut hooks,
-            &mut harness,
+            &mut wrapped_harness,
             tuple_list!(edges_observer, time_observer),
             &mut fuzzer,
             &mut state,
@@ -217,4 +158,66 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
         Err(Error::ShuttingDown) => info!("Fuzzing stopped by user. Good bye."),
         Err(err) => panic!("Failed to run launcher: {err:?}"),
     }
+}
+
+fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInput) -> ExitKind {
+    emu.restore_fast_snapshot(snap);
+    let target = input.target_bytes();
+    let mut buf = target.as_slice();
+    let len = buf.len();
+    unsafe {
+        if len > MAX_INPUT_SIZE {
+            buf = &buf[0..MAX_INPUT_SIZE];
+        }
+
+        if len < 24 {
+            return ExitKind::Ok;
+        }
+
+        debug!("Setting fuzzer inputs");
+        // this will work for target functions with max. 6 input parameters
+        let params: Vec<u32> = buf
+            .chunks(4)
+            .take(6)
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
+            .collect();
+        let [param1, param2, param3, param4, param5, param6] = params[..6].try_into().unwrap();
+
+        // Provide the fuzzer input to the target function
+        let cpu = emu.current_cpu().unwrap();
+
+        cpu.write_reg(Regs::Pc, config.fuzz_target_address).unwrap();
+        let pc2: u32 = emu
+            .current_cpu()
+            .unwrap()
+            .read_reg(Regs::Pc)
+            .expect("Failed to get pc");
+        info!("{pc2:?}");
+        for (reg, param) in [
+            (Regs::R0, param1),
+            (Regs::R1, param2),
+            (Regs::R2, param3),
+            (Regs::R3, param4),
+            (Regs::R4, param5),
+            (Regs::R5, param6),
+        ] {
+            cpu.write_reg(reg, param).unwrap();
+        }
+
+        // Set breakpoint to the fuzz target's return address
+        emu.set_breakpoint(config.fuzz_target_return_address);
+        info!("Running the fuzzer on the target function");
+        emu.run().unwrap();
+
+        let pc2: u32 = emu
+            .current_cpu()
+            .unwrap()
+            .read_reg(Regs::Pc)
+            .expect("Failed to get pc");
+        info!("{pc2:?}");
+        if pc2 == config.fuzz_target_return_address {
+            debug!("Fuzz target return");
+        }
+    }
+    ExitKind::Ok
 }

@@ -3,7 +3,7 @@ use crate::{
     config::Config,
 };
 use libafl_qemu::{Emulator, FastSnapshot, Regs};
-use log::{debug, error, info, warn};
+use log::{debug, info};
 use std::env;
 
 /// Runs the emulator without fuzzing, continuously handling breakpoints.
@@ -54,9 +54,6 @@ pub(crate) fn run_no_fuzzer(config: &Config, emu: &Emulator) -> ! {
 /// 3. Runs the emulator and handles breakpoints in a loop
 /// 4. Creates a snapshot when reaching the fuzz target or "app_init_done" breakpoint
 pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnapshot> {
-    let mut snap = None;
-    let mut fuzz_target_found = false;
-    let fuzz_target_return_address = config.fuzz_target_return_address;
     set_breakpoints(emu, config.clone());
 
     if config.fuzz {
@@ -71,19 +68,16 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
         let breakpoint_name = handle_breakpoint(emu, config.clone()).unwrap();
 
         if config.fuzz && current_pc == config.fuzz_target_address {
-            fuzz_target_found = true;
             info!("reached fuzz target during normal boot");
             emu.remove_breakpoint(config.fuzz_target_address);
 
-            snap = Some(emu.create_fast_snapshot(true));
             info!("Snapshot created for the fuzz target");
-            return snap;
+            return Some(emu.create_fast_snapshot(true));
         }
 
         if breakpoint_name == "app_init_done" {
             info!("app init done, creating snapshot at: {current_pc:#x}");
-            snap = Some(emu.create_fast_snapshot(true));
-            return snap;
+            return Some(emu.create_fast_snapshot(true));
         }
     }
 }

@@ -4,11 +4,9 @@ mod fuzz;
 mod utils;
 
 use crate::{
-    config::Config,
     fuzz::run_fuzzer,
     utils::{boot_firmware, init_qemu, run_no_fuzzer},
 };
-use breakpoints::handle_breakpoint;
 use config::{parse_config, CONFIG_PATH};
 use env_logger::Env;
 use log::{debug, error};
