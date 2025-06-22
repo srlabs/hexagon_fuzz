@@ -1,5 +1,4 @@
 use crate::config::Config;
-use crate::unwinder::{HexagonUnwinder, SymbolMap};
 use libafl_qemu::ArchExtras;
 use libafl_qemu::CallingConvention;
 use libafl_qemu::Emulator;
@@ -219,10 +218,11 @@ fn handle_jump_over(emu: &Emulator) {
         .unwrap()
         .write_reg(Regs::Pc, return_address)
         .unwrap();
-    println!("hit first clade (0xfe10a3ec), jumping over.");
+    println!("jumping over to: {return_address:#x}");
 }
 
 fn handle_second_clade(emu: &Emulator) {
+    println!("Handling another clade");
     let _ = emu.write_reg(Regs::R3, 28u32);
 }
 
@@ -233,6 +233,7 @@ fn handle_next_pc(emu: &Emulator) {
         .unwrap()
         .write_reg(Regs::Pc, next_pc)
         .unwrap();
+    println!("Jumping to next PC: {next_pc:#x}");
 }
 
 fn handle_fatal_error(emu: &Emulator) {

@@ -4,9 +4,8 @@ extern crate lazy_static;
 
 mod breakpoints;
 mod config;
-mod unwinder;
 use breakpoints::handle_breakpoint;
-use config::{parse_config, Config, CONFIG_PATH};
+use config::{parse_config, CONFIG_PATH};
 
 use core::{ptr::addr_of_mut, time::Duration};
 
@@ -39,7 +38,11 @@ use libafl_qemu::{
     emu::Emulator,
     QemuExecutor, QemuHooks, Regs,
 };
-use std::{env, path::PathBuf, process::{self, exit}};
+use std::{
+    env,
+    path::PathBuf,
+    process::{self},
+};
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
@@ -58,7 +61,7 @@ pub fn main() {
     let mut snap = None;
     let mut fuzz_target_found = false;
     let fuzz_target_return_address = config.fuzz_target_return_address;
-    
+
     // boot
     unsafe {
         breakpoints::set_breakpoints(&emu, config.clone());
@@ -71,18 +74,19 @@ pub fn main() {
         loop {
             let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
-            
+
             if config.fuzz && current_pc == config.fuzz_target_address {
                 fuzz_target_found = true;
                 println!("reached fuzz target during normal boot");
                 emu.remove_breakpoint(config.fuzz_target_address);
-                
+
                 snap = Some(emu.create_fast_snapshot(true));
                 println!("Snapshot created for the fuzz target");
                 break;
             }
-           
+
             if breakpoint_name == "app_init_done" {
+                println!("app init done, creating snapshot at: {current_pc:#x}");
                 snap = Some(emu.create_fast_snapshot(true));
                 break;
             }
@@ -93,60 +97,48 @@ pub fn main() {
     // Boot execution till adventures
     if !config.fuzz {
         let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-        println!("app init done {current_pc:#x}");
-
         println!("lets go for adventures");
+        println!("current pc: {current_pc:#x}");
         unsafe {
             let _ = emu.run();
         }
         loop {
             let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
             println!("handled breakpoint: {breakpoint_name}");
-
             unsafe {
                 let _ = emu.run();
             }
         }
-
-        /*
-        emu.current_cpu()
-            .unwrap()
-            .write_reg(Regs::Pc, 0xfe000000u32)
-            .unwrap();
-
-        let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-        println!("jumping to a random address {current_pc:#x}");
-
-        emu.restore_fast_snapshot(snap.unwrap());
-        let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-        println!("restored snapshot {current_pc:#x}");
-        unsafe{
-            emu.run();
-        }
-        */
     }
     // Fuzz a target function
     else {
-        let timeout = Duration::from_secs(config.timeout_seconds.try_into().unwrap());
+        let timeout = Duration::from_secs(config.timeout_seconds.into());
         let broker_port = config.broker_port.try_into().unwrap();
         let mut cores = Cores::all().unwrap();
         cores.trim(config.cores.try_into().unwrap()).unwrap();
         let corpus_dirs = [PathBuf::from("./corpus")];
         let objective_dir = PathBuf::from("./crashes");
-        
-        if fuzz_target_found == false {
+
+        if !fuzz_target_found {
+            if let Some(snap) = snap {
+                println!("restoring stable state");
+                emu.restore_fast_snapshot(snap);
+            }
             println!("Target function was not reached during normal boot. jumping there !!!");
             emu.current_cpu()
                 .unwrap()
                 .write_reg(Regs::Pc, config.fuzz_target_address)
                 .unwrap();
-            // snap = Some(emu.create_fast_snapshot(true));
-            // println!("Snapshot created for the fuzz target");
+            snap = Some(emu.create_fast_snapshot(true));
+            println!("Snapshot created for the fuzz target");
         }
 
         let mut run_client = |state: Option<_>, mut mgr, _core_id| {
             // The wrapped fuzz target function, calling out to the LLVM-style harness
             let mut harness = |input: &BytesInput| {
+                if let Some(snap) = snap {
+                    emu.restore_fast_snapshot(snap);
+                }
                 let target = input.target_bytes();
                 let mut buf = target.as_slice();
                 let len = buf.len();
@@ -159,19 +151,21 @@ pub fn main() {
                         return ExitKind::Ok;
                     }
 
-                    println!("Setting fuzzer inputs");
+                    // println!("Setting fuzzer inputs");
                     // this will work for target functions with max. 6 input parameters
-                    let params: Vec<u32> = buf.chunks(4)
+                    let params: Vec<u32> = buf
+                        .chunks(4)
                         .take(6)
                         .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
                         .collect();
-                    let [param1, param2, param3, param4, param5, param6] = params[..6].try_into().unwrap();
+                    let [param1, param2, param3, param4, param5, param6] =
+                        params[..6].try_into().unwrap();
 
                     // Provide the fuzzer input to the target function
                     let cpu = emu.current_cpu().unwrap();
                     for (reg, param) in [
                         (Regs::R0, param1),
-                        (Regs::R1, param2), 
+                        (Regs::R1, param2),
                         (Regs::R2, param3),
                         (Regs::R3, param4),
                         (Regs::R4, param5),
@@ -182,7 +176,7 @@ pub fn main() {
 
                     // Set breakpoint to the fuzz target's return address
                     emu.set_breakpoint(fuzz_target_return_address);
-                    println!("Running the fuzzer on the target function");
+                    // println!("Running the fuzzer on the target function");
                     emu.run().unwrap();
 
                     let pc2: u32 = emu

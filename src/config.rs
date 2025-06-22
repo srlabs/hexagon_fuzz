@@ -1,9 +1,7 @@
 use crate::breakpoints::HandlerFunction;
-use libafl_qemu::Emulator;
 use serde::Deserialize;
 use serde::Deserializer;
 use std::fs;
-use std::path::Path;
 
 pub const CONFIG_PATH: &str = "firmware_config.json";
 
@@ -39,7 +37,7 @@ where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    u32::from_str_radix(&s.trim_start_matches("0x"), 16).map_err(serde::de::Error::custom)
+    u32::from_str_radix(s.trim_start_matches("0x"), 16).map_err(serde::de::Error::custom)
 }
 
 fn hex_string_to_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>

@@ -1,7 +1,7 @@
 {
-  "fuzz": false,
-  "fuzz_target_address": "0xc04f1b88",
-  "fuzz_target_return_address": "0xc04f1bf4",
+  "fuzz": true,
+  "fuzz_target_address": "0xfe104330",
+  "fuzz_target_return_address": "0xfe1043f4",
   "firmware": "./qdsp6sw.mbn",
   "qemu_args": [
     "",
@@ -17,7 +17,7 @@
     "-s"
   ],
   "broker_port": "61337",
-  "timeout_seconds": "10", 
+  "timeout_seconds": "1", 
   "cores": "3",
   "breakpoints": [
     {
@@ -67,8 +67,8 @@
     },
     {
       "name": "app_init_done",
-      "address": "0xfe008274",
-      "handler": "HandleJumpOver"
+      "address": "0xc0100064",
+      "handler": "HandlerEmpty"
     },
     {
       "name": "zeroing_yetanother",
