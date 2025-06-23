@@ -1,5 +1,4 @@
 use crate::breakpoints::HandlerFunction;
-use log::debug;
 use serde::Deserialize;
 use serde::Deserializer;
 use std::fs;
@@ -37,18 +36,7 @@ where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    debug!(
-        "Parsing hex address string: '{}' -> stripped: '{}'",
-        s,
-        s.trim_start_matches("0x")
-    );
-    let result =
-        u32::from_str_radix(s.trim_start_matches("0x"), 16).map_err(serde::de::Error::custom);
-    match &result {
-        Ok(value) => debug!("Successfully parsed hex address: '{}' -> 0x{:x}", s, value),
-        Err(e) => debug!("Failed to parse hex address: '{}' - error: {:?}", s, e),
-    }
-    result
+    u32::from_str_radix(s.trim_start_matches("0x"), 16).map_err(serde::de::Error::custom)
 }
 
 fn hex_string_to_u32<'de, D>(deserializer: D) -> Result<u32, D::Error>
@@ -56,18 +44,11 @@ where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    debug!("Parsing decimal string to u32: '{}'", s);
-    let result = u32::from_str_radix(&s, 10).map_err(serde::de::Error::custom);
-    match &result {
-        Ok(value) => debug!("Successfully parsed decimal string: '{}' -> {}", s, value),
-        Err(e) => debug!("Failed to parse decimal string: '{}' - error: {:?}", s, e),
-    }
-    result
+    u32::from_str_radix(&s, 10).map_err(serde::de::Error::custom)
 }
 
 pub fn parse_config(config_file_path: &str) -> Result<Config, Box<dyn std::error::Error>> {
     let content = fs::read_to_string(config_file_path)?;
     let config: Config = serde_json::from_str(&content)?;
-    debug!("Configuration loaded successfully: {config:?}");
     Ok(config)
 }
