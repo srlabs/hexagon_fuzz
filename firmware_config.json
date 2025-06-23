@@ -1,7 +1,7 @@
 {
   "fuzz": true,
-  "fuzz_target_address": "0xfe104330",
-  "fuzz_target_return_address": "0xfe1043f4",
+  "fuzz_target_address": "0xc04f1b88",
+  "fuzz_target_return_address": "0xc04f2094",
   "qemu_args": [
     "",
     "-monitor",
