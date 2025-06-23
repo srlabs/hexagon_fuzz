@@ -1,17 +1,30 @@
-# Setup
+# Baseband Fuzz
 
-## Install dependencies on Ubuntu
+A fuzzing framework for Hexagon baseband firmware using QEMU emulation. This tool enables security researchers to fuzz baseband processors by emulating firmware in a controlled environment, supporting debugging and vulnerability discovery in cellular modem implementations.
+
+## Features
+
+- QEMU-based emulation of baseband firmware
+- LibAFL-based
+- Support for Hexagon (Qualcomm DSP) architecture
+- Integrated LLDB debugging capabilities with the Qualcomm SDK
+- Configurable fuzzing targets and parameters
+- Docker containerization for easy deployment
+
+## Setup
+
+### Install dependencies on Ubuntu
 ```bash
 sudo apt install python3 python3-pip python3-sphinx python3-sphinx-rtd-theme ninja-build libglib2.0-dev flex bison clang rustup
 ```
 
-## Clone the repo and fetch the qemu submodule
+### Clone the repo and fetch the qemu submodule
 ```bash
 git clone https://github.com/srlabs/baseband_fuzz.git
 git submodule update --init
 ```
 
-## Tmux script
+### Tmux script
 - Set the `SDK_HOME` env variable to the path of Hexagon SDK
 - Run the `scripts/tmux_bootstrap.sh` to start the emulation and attach a LLDB for debugging
 

@@ -68,10 +68,10 @@ pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, Strin
     let pcs = (0..emu.num_cpus())
         .map(|i| emu.cpu_from_index(i))
         .map(|cpu| -> Result<u32, String> { cpu.read_reg(Regs::Pc) });
-    //for pc in pcs.clone() {
-    //    let pc = pc.unwrap();
-    //    debug!("pc: {pc:#x}");
-    //}
+    for pc in pcs.clone() {
+        let pc = pc.unwrap();
+        debug!("pc: {pc:#x}");
+    }
     let mut broken_pcs: String = String::new();
     for pc in pcs {
         for bp in config.breakpoints.iter() {
