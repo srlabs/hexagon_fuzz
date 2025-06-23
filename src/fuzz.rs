@@ -24,7 +24,7 @@ use libafl_bolts::{
     rands::StdRand,
     shmem::{ShMemProvider, StdShMemProvider},
     tuples::tuple_list,
-    AsSlice,
+    AsSlice, HasLen,
 };
 use libafl_qemu::{
     edges::{edges_map_mut_slice, QemuEdgeCoverageHelper, MAX_EDGES_NUM},
@@ -38,16 +38,28 @@ use std::{
 };
 
 pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
+    info!("Starting fuzzer with config: timeout={}s, broker_port={}, fuzz_target=0x{:x}, return_addr=0x{:x}",
+          config.timeout_seconds, config.broker_port, config.fuzz_target_address, config.fuzz_target_return_address);
+
     let timeout = Duration::from_secs(config.timeout_seconds.into());
     let broker_port = config.broker_port.try_into().unwrap();
     let mut cores = Cores::all().unwrap();
     cores.trim(config.cores.try_into().unwrap()).unwrap();
+    debug!("Using {} CPU cores for fuzzing", cores.ids.len());
+
     let corpus_dirs = [PathBuf::from("./corpus")];
     let objective_dir = PathBuf::from("./crashes");
+    debug!(
+        "Corpus directory: {:?}, Crashes directory: {:?}",
+        corpus_dirs, objective_dir
+    );
 
     let mut run_client = |state: Option<_>, mut mgr, _core_id| {
         // The wrapped fuzz target function, calling out to the LLVM-style harness
-        let mut wrapped_harness = |input: &BytesInput| harness(&config, &emu, snap, input);
+        let mut wrapped_harness = |input: &BytesInput| {
+            debug!("Harness called with input size: {} bytes", input.len());
+            harness(&config, &emu, snap, input)
+        };
 
         // Create an observation channel using the coverage map
         let edges_observer = unsafe {
@@ -75,6 +87,7 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
 
         // If not restarting, create a State from scratch
         let mut state = state.unwrap_or_else(|| {
+            debug!("Creating new fuzzer state from scratch");
             StdState::new(
                 // RNG
                 StdRand::with_seed(current_nanos()),
@@ -101,6 +114,7 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
         let mut hooks = QemuHooks::new(emu.clone(), tuple_list!(QemuEdgeCoverageHelper::default()));
 
         // Create a QEMU in-process executor
+        debug!("Creating QEMU executor with timeout: {:?}", timeout);
         let mut executor = QemuExecutor::new(
             &mut hooks,
             &mut wrapped_harness,
@@ -114,8 +128,10 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
 
         // Instead of calling the timeout handler and restart the process, trigger a breakpoint ASAP
         executor.break_on_timeout();
+        debug!("QEMU executor created successfully with breakpoint on timeout");
 
         if state.must_load_initial_inputs() {
+            debug!("Loading initial inputs from corpus directories");
             state
                 .load_initial_inputs_forced(&mut fuzzer, &mut executor, &mut mgr, &corpus_dirs)
                 .unwrap_or_else(|_| {
@@ -123,12 +139,16 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
                     process::exit(0);
                 });
             info!("Imported {} inputs from disk.", state.corpus().count());
+        } else {
+            debug!("Skipping initial input loading - state already has inputs");
         }
 
         // Setup an havoc mutator with a mutational stage
+        debug!("Setting up havoc mutator and mutational stage");
         let mutator = StdScheduledMutator::new(havoc_mutations());
         let mut stages = tuple_list!(StdMutationalStage::new(mutator));
 
+        info!("Starting main fuzzing loop");
         fuzzer
             .fuzz_loop(&mut stages, &mut executor, &mut state, &mut mgr)
             .unwrap();
@@ -161,6 +181,10 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
 }
 
 fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInput) -> ExitKind {
+    debug!(
+        "Harness: restoring snapshot and preparing input (size: {})",
+        input.len()
+    );
     emu.restore_fast_snapshot(snap);
     let target = input.target_bytes();
     let mut buf = target.as_slice();
@@ -171,10 +195,14 @@ fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInp
         }
 
         if len < 24 {
+            debug!(
+                "Harness: input size {} too small (< 24 bytes), skipping",
+                len
+            );
             return ExitKind::Ok;
         }
 
-        debug!("Setting fuzzer inputs");
+        debug!("Setting fuzzer inputs from {} bytes", buf.len());
         // this will work for target functions with max. 6 input parameters
         let params: Vec<u32> = buf
             .chunks(4)
@@ -182,6 +210,10 @@ fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInp
             .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
             .collect();
         let [param1, param2, param3, param4, param5, param6] = params[..6].try_into().unwrap();
+        debug!(
+            "Harness: extracted parameters: 0x{:x}, 0x{:x}, 0x{:x}, 0x{:x}, 0x{:x}, 0x{:x}",
+            param1, param2, param3, param4, param5, param6
+        );
 
         // Provide the fuzzer input to the target function
         let cpu = emu.current_cpu().unwrap();
@@ -192,7 +224,10 @@ fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInp
             .unwrap()
             .read_reg(Regs::Pc)
             .expect("Failed to get pc");
-        info!("{pc2:?}");
+        debug!(
+            "Harness: set PC to 0x{:x}, verified PC is 0x{:x}",
+            config.fuzz_target_address, pc2
+        );
         for (reg, param) in [
             (Regs::R0, param1),
             (Regs::R1, param2),
@@ -203,10 +238,15 @@ fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInp
         ] {
             cpu.write_reg(reg, param).unwrap();
         }
+        debug!("Harness: set registers R0-R5 with parameter values");
 
         // Set breakpoint to the fuzz target's return address
         emu.set_breakpoint(config.fuzz_target_return_address);
-        info!("Running the fuzzer on the target function");
+        debug!(
+            "Harness: set breakpoint at return address 0x{:x}",
+            config.fuzz_target_return_address
+        );
+        debug!("Running the fuzzer on the target function");
         emu.run().unwrap();
 
         let pc2: u32 = emu
@@ -214,9 +254,14 @@ fn harness(config: &Config, emu: &Emulator, snap: FastSnapshot, input: &BytesInp
             .unwrap()
             .read_reg(Regs::Pc)
             .expect("Failed to get pc");
-        info!("{pc2:?}");
+        debug!("Harness: execution stopped at PC 0x{:x}", pc2);
         if pc2 == config.fuzz_target_return_address {
-            debug!("Fuzz target return");
+            debug!("Harness: successfully reached fuzz target return address");
+        } else {
+            debug!(
+                "Harness: execution stopped at unexpected address 0x{:x} (expected 0x{:x})",
+                pc2, config.fuzz_target_return_address
+            );
         }
     }
     ExitKind::Ok

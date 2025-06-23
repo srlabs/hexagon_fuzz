@@ -24,7 +24,10 @@ pub(crate) fn run_no_fuzzer(config: &Config, emu: &Emulator) -> ! {
     unsafe {
         let _ = emu.run();
     }
+    debug!("Emulator stopped, entering breakpoint handling loop");
     loop {
+        let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+        debug!("Emulator stopped at PC: 0x{:x}", current_pc);
         let breakpoint_name = handle_breakpoint(emu, config.clone()).unwrap();
         debug!("handled breakpoint: {breakpoint_name}");
         unsafe {
@@ -54,24 +57,39 @@ pub(crate) fn run_no_fuzzer(config: &Config, emu: &Emulator) -> ! {
 /// 3. Runs the emulator and handles breakpoints in a loop
 /// 4. Creates a snapshot when reaching the fuzz target or "app_init_done" breakpoint
 pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnapshot> {
+    debug!("Starting firmware boot process");
+
+    debug!("Setting up breakpoints from configuration");
     set_breakpoints(emu, config.clone());
 
     if config.fuzz {
+        debug!(
+            "Fuzzing enabled - setting breakpoint at fuzz target address 0x{:x}",
+            config.fuzz_target_address
+        );
         emu.set_breakpoint(config.fuzz_target_address);
+    } else {
+        debug!("Fuzzing disabled - no fuzz target breakpoint set");
     }
     info!("Breakpoints set");
+    debug!("Starting initial firmware boot run");
     unsafe {
         let _ = emu.run();
     }
+    debug!("Emulator stopped during boot, entering breakpoint handling loop");
+
     loop {
         let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+        debug!("Boot: emulator stopped at PC: 0x{:x}", current_pc);
+
         let breakpoint_name = handle_breakpoint(emu, config.clone()).unwrap();
+        debug!("Boot: handled breakpoint: {}", breakpoint_name);
 
         if config.fuzz && current_pc == config.fuzz_target_address {
             info!("reached fuzz target during normal boot");
             emu.remove_breakpoint(config.fuzz_target_address);
 
-            info!("Snapshot created for the fuzz target");
+            info!("Creating fast snapshot at fuzz target address");
             return Some(emu.create_fast_snapshot(true));
         }
 
@@ -79,6 +97,8 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
             info!("app init done, creating snapshot at: {current_pc:#x}");
             return Some(emu.create_fast_snapshot(true));
         }
+
+        debug!("Boot: resuming emulator execution");
         unsafe {
             let _ = emu.run();
         }
@@ -86,10 +106,17 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
 }
 
 pub(crate) fn init_qemu(config: &Config) -> Emulator {
+    debug!("Initializing QEMU emulator");
+    debug!("QEMU args: {:?}", config.qemu_args);
+
     let env: Vec<(String, String)> = env::vars().collect();
+    debug!("Environment variables count: {}", env.len());
+
+    debug!("Creating QEMU emulator instance");
     let emu = Emulator::new(&config.qemu_args, &env).unwrap();
 
     let devices = emu.list_devices();
-    debug!("Devices = {devices:?}");
+    debug!("Available QEMU devices: {:?}", devices);
+
     emu
 }

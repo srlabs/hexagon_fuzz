@@ -9,15 +9,16 @@ use crate::{
 };
 use config::{parse_config, CONFIG_PATH};
 use env_logger::Env;
-use log::{debug, error};
+use log::{debug, error, info};
 use std::process;
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    info!("Starting baseband_fuzz application");
+    debug!("Parsing configuration from: {}", CONFIG_PATH);
     let config = parse_config(CONFIG_PATH).unwrap();
-    debug!("{config:?}");
 
     // Initialize QEMU
     let emu = init_qemu(&config);
@@ -30,8 +31,10 @@ pub fn main() {
 
     // Fuzz or just continue booting without fuzzing
     if config.fuzz {
+        debug!("Fuzzing mode enabled - starting fuzzer");
         run_fuzzer(config, emu, snap);
     } else {
+        debug!("Fuzzing mode disabled - continuing without fuzzing");
         run_no_fuzzer(&config, &emu)
     }
 }
