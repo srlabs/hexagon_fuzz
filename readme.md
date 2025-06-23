@@ -15,7 +15,7 @@ A fuzzing framework for Hexagon baseband firmware using QEMU system emulation. T
 
 ### Install dependencies on Ubuntu
 ```bash
-sudo apt install python3 python3-pip python3-sphinx python3-sphinx-rtd-theme ninja-build libglib2.0-dev flex bison clang rustup
+sudo apt install python3 python3-pip python3-sphinx python3-sphinx-rtd-theme ninja-build libglib2.0-dev flex bison clang rustup tmux gdb gdbserver socat
 ```
 
 ### Clone the repo and fetch the qemu submodule
