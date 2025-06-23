@@ -79,6 +79,9 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
             info!("app init done, creating snapshot at: {current_pc:#x}");
             return Some(emu.create_fast_snapshot(true));
         }
+        unsafe {
+            let _ = emu.run();
+        }
     }
 }
 
