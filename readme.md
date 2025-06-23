@@ -1,6 +1,6 @@
 # Baseband Fuzz
 
-A fuzzing framework for Hexagon baseband firmware using QEMU emulation. This tool enables security researchers to fuzz baseband processors by emulating firmware in a controlled environment, supporting debugging and vulnerability discovery in cellular modem implementations.
+A fuzzing framework for Hexagon baseband firmware using QEMU system emulation. This tool enables security researchers to fuzz baseband processors by emulating firmware in a controlled environment, supporting debugging and vulnerability discovery in cellular modem implementations.
 
 ## Features
 
