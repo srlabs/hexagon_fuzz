@@ -1,4 +1,8 @@
-use crate::{config::Config, MAX_INPUT_SIZE};
+use crate::{
+    config::Config,
+    utils::{boot_firmware, init_qemu},
+    MAX_INPUT_SIZE,
+};
 
 use core::{ptr::addr_of_mut, time::Duration};
 
@@ -37,7 +41,7 @@ use std::{
     process::{self},
 };
 
-pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
+pub fn run_fuzzer(config: Config) {
     info!("Starting fuzzer with config: timeout={}s, broker_port={}, fuzz_target=0x{:x}, return_addr=0x{:x}",
           config.timeout_seconds, config.broker_port, config.fuzz_target_address, config.fuzz_target_return_address);
 
@@ -55,6 +59,14 @@ pub fn run_fuzzer(config: Config, emu: Emulator, snap: FastSnapshot) {
     );
 
     let mut run_client = |state: Option<_>, mut mgr, _core_id| {
+        // Initialize QEMU
+        let emu = init_qemu(&config);
+
+        // boot
+        let snap = boot_firmware(&config, &emu).unwrap_or_else(|| {
+            error!("Could not snapshot firmware!");
+            process::exit(1);
+        });
         // The wrapped fuzz target function, calling out to the LLVM-style harness
         let mut wrapped_harness = |input: &BytesInput| {
             debug!("Harness called with input size: {} bytes", input.len());

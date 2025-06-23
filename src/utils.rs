@@ -18,7 +18,10 @@ use std::env;
 ///
 /// # Returns
 /// This function never returns
-pub(crate) fn run_no_fuzzer(config: &Config, emu: &Emulator) -> ! {
+pub(crate) fn run_no_fuzzer(config: Config) -> ! {
+    // Initialize QEMU
+    let emu = init_qemu(&config);
+
     let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
     info!("current pc: {current_pc:#x}");
     unsafe {
@@ -28,7 +31,7 @@ pub(crate) fn run_no_fuzzer(config: &Config, emu: &Emulator) -> ! {
     loop {
         let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
         debug!("Emulator stopped at PC: 0x{:x}", current_pc);
-        let breakpoint_name = handle_breakpoint(emu, config.clone()).unwrap();
+        let breakpoint_name = handle_breakpoint(&emu, config.clone()).unwrap();
         debug!("handled breakpoint: {breakpoint_name}");
         unsafe {
             let _ = emu.run();
