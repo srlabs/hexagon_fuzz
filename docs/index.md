@@ -1,6 +1,6 @@
-# Baseband Fuzzing Project
+# Hexagon Fuzz
 
-Welcome to the **Baseband Fuzzing Project**! This project focuses on fuzzing baseband firmware, specifically targeting Qualcomm Hexagon processors, to uncover vulnerabilities and improve the security of mobile devices. Below, you'll find a guide to get started, set up your environment, and dive into the exciting world of baseband fuzzing.
+Welcome to the **Hexagon baseband fuzzing project**! This project focuses on fuzzing baseband firmware, specifically targeting Qualcomm Hexagon processors, to uncover vulnerabilities and improve the security of mobile devices. Below, you'll find a guide to get started, set up your environment, and dive into the exciting world of baseband fuzzing.
 
 
 ## Quick Start
