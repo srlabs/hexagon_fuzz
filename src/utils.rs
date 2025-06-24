@@ -24,8 +24,7 @@ pub(crate) fn run_no_fuzzer(config: Config) -> ! {
     set_breakpoints(&emu, config.clone());
     info!("Breakpoints set");
 
-    let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
-    info!("current pc: {current_pc:#x}");
+    
     unsafe {
         let _ = emu.run();
     }
