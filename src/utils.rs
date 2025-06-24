@@ -21,6 +21,8 @@ use std::env;
 pub(crate) fn run_no_fuzzer(config: Config) -> ! {
     // Initialize QEMU
     let emu = init_qemu(&config);
+    set_breakpoints(&emu, config.clone());
+    info!("Breakpoints set");
 
     let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
     info!("current pc: {current_pc:#x}");
@@ -63,17 +65,9 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
     debug!("Starting firmware boot process");
 
     debug!("Setting up breakpoints from configuration");
-    set_breakpoints(emu, config.clone());
+    set_breakpoints(&emu, config.clone());
+    emu.set_breakpoint(config.fuzz_target_address);
 
-    if config.fuzz {
-        debug!(
-            "Fuzzing enabled - setting breakpoint at fuzz target address 0x{:x}",
-            config.fuzz_target_address
-        );
-        emu.set_breakpoint(config.fuzz_target_address);
-    } else {
-        debug!("Fuzzing disabled - no fuzz target breakpoint set");
-    }
     info!("Breakpoints set");
     debug!("Starting initial firmware boot run");
     unsafe {
@@ -88,7 +82,7 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
         let breakpoint_name = handle_breakpoint(emu, config.clone()).unwrap();
         debug!("Boot: handled breakpoint: {}", breakpoint_name);
 
-        if config.fuzz && current_pc == config.fuzz_target_address {
+        if current_pc == config.fuzz_target_address {
             info!("reached fuzz target during normal boot");
             emu.remove_breakpoint(config.fuzz_target_address);
 
@@ -97,7 +91,11 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
         }
 
         if breakpoint_name == "app_init_done" {
-            info!("app init done, creating snapshot at: {current_pc:#x}");
+            emu.current_cpu()
+                .unwrap()
+                .write_reg(Regs::Pc, config.fuzz_target_address)
+                .unwrap();
+            info!("app init done, creating snapshot at fuzz target: {:#x}", config.fuzz_target_address);
             return Some(emu.create_fast_snapshot(true));
         }
 
