@@ -7,13 +7,12 @@ use crate::{fuzz::run_fuzzer, utils::run_no_fuzzer};
 use config::{parse_config, CONFIG_PATH};
 use env_logger::Env;
 use log::{debug, info};
-use std::process;
 
 pub static mut MAX_INPUT_SIZE: usize = 50;
 
 pub fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-    info!("Starting baseband_fuzz application");
+    info!("Starting hexagon_fuzz application");
     debug!("Parsing configuration from: {}", CONFIG_PATH);
     let config = parse_config(CONFIG_PATH).unwrap();
 

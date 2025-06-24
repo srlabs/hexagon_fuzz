@@ -21,7 +21,7 @@ tmux split-window -v -t baseband
 
 
 # Fuzzer
-tmux send-keys -t baseband:0.1 './target/release/baseband_fuzz' C-m
+tmux send-keys -t baseband:0.1 './target/release/hexagon_fuzz' C-m
 sleep 1
 
 # Setup LLDB

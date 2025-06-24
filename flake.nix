@@ -1,5 +1,5 @@
 {
-  description = "Development shell for baseband_fuzz";
+  description = "Development shell for hexagon_fuzz";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs";
   outputs =
     {

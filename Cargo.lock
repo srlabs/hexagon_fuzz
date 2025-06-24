@@ -137,19 +137,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "baseband_fuzz"
-version = "0.1.0"
-dependencies = [
- "env_logger",
- "libafl",
- "libafl_bolts",
- "libafl_qemu",
- "log",
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,6 +533,19 @@ name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
+
+[[package]]
+name = "hexagon_fuzz"
+version = "0.1.0"
+dependencies = [
+ "env_logger",
+ "libafl",
+ "libafl_bolts",
+ "libafl_qemu",
+ "log",
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "home"
