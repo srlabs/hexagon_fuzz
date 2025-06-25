@@ -97,7 +97,7 @@ pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, Strin
     for pc in pcs {
         for bp in config.breakpoints.iter() {
             if pc.clone().unwrap() == bp.address {
-                info!("Breakpoint reached: {} at 0x{:x}", bp.name, bp.address);
+                debug!("Breakpoint reached: {} at 0x{:x}", bp.name, bp.address);
                 debug!("Calling handler: {:?}", bp.handler);
                 bp.handler.call(emu);
                 return Ok(bp.name.clone());
