@@ -1,5 +1,5 @@
 # Use official Ubuntu base image
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 # Update package lists and install required dependencies
 RUN apt-get update && \
@@ -21,6 +21,16 @@ RUN apt-get update && \
     gdbserver \
     socat \
     && rm -rf /var/lib/apt/lists/*
+
+# Setup ncurses5, required for hexagon sdk 5.5.5.0, and other dependencies for custom tmux tooling
+RUN echo "deb http://security.ubuntu.com/ubuntu focal-security main universe" > /etc/apt/sources.list.d/ubuntu-focal-sources.list
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    python-is-python3\
+    libncurses5 \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
 
 # Install specific Rust nightly version
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
