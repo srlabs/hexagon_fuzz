@@ -54,7 +54,7 @@ cargo build --release
 ```
 
 ## Get a firmware
-We used qdsp6sw.mbn with sha256 b5a0e5027c9dbe094569ebb08afc3d5ad0665b75c36ea827b40380c90ef8276a
+We used qdsp6sw.mbn (iPhone 14) with sha256 b5a0e5027c9dbe094569ebb08afc3d5ad0665b75c36ea827b40380c90ef8276a
 
 ## Documentation
 Some documentation around reversing, setting up the tooling, emulation and more can be found in the [docs directory](./docs/index.md)
