@@ -1,10 +1,16 @@
 use crate::config::Config;
+use crate::config::Section;
+use crate::config::SectionFormat;
+use crate::config::SectionType;
+use crate::utils::decode_hex;
 use libafl_qemu::ArchExtras;
 use libafl_qemu::CallingConvention;
 use libafl_qemu::Emulator;
 use libafl_qemu::Regs;
 use log::{debug, error, info};
 use serde::Deserialize;
+use std::fs;
+use std::path::Path;
 use std::process;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -16,11 +22,14 @@ pub enum HandlerFunction {
     HandleFatalError,
     HandleZeroingYetAnother,
     HandlerEmpty, // Add other handlers here
+    HandleNextTwo,
+    HandleCladeLoading,
+    HandleSkipCall,
 }
 
 // Implement a method to call the actual handler function
 impl HandlerFunction {
-    pub fn call(&self, emu: &Emulator) {
+    pub fn call(&self, emu: &Emulator, sections: Vec<Section>) {
         debug!("Executing handler function: {:?}", self);
         match self {
             HandlerFunction::HandlePrintln => handle_println(emu),
@@ -30,6 +39,9 @@ impl HandlerFunction {
             HandlerFunction::HandleFatalError => handle_fatal_error(emu),
             HandlerFunction::HandleZeroingYetAnother => handle_zeroing_yet_another(emu),
             HandlerFunction::HandlerEmpty => handler_empty(emu),
+            HandlerFunction::HandleNextTwo => handle_next_two(emu),
+            HandlerFunction::HandleCladeLoading => handle_clade_loading(emu, sections),
+            HandlerFunction::HandleSkipCall => handle_skip_call(emu),
             // Add cases for other handlers
         }
     }
@@ -99,7 +111,7 @@ pub fn handle_breakpoint(emu: &Emulator, config: Config) -> Result<String, Strin
             if pc.clone().unwrap() == bp.address {
                 debug!("Breakpoint reached: {} at 0x{:x}", bp.name, bp.address);
                 debug!("Calling handler: {:?}", bp.handler);
-                bp.handler.call(emu);
+                bp.handler.call(emu, config.sections);
                 return Ok(bp.name.clone());
             }
         }
@@ -138,8 +150,10 @@ fn handler_empty(emu: &Emulator) {
 fn handle_println(emu: &Emulator) {
     debug!("Handle printf: introspecting printf call");
     let format_ptr = emu.current_cpu().unwrap().read_reg(Regs::R0).unwrap();
+    let return_address: u32 = emu.current_cpu().unwrap().read_return_address().unwrap();
     let format_string = read_cstring_from_ptr(emu, format_ptr);
 
+    debug!("println ret address: 0x{:x}", return_address);
     let a: u32 = emu
         .read_function_argument(CallingConvention::Cdecl, 0)
         .unwrap();
@@ -219,6 +233,19 @@ fn handle_jump_over(emu: &Emulator) {
     debug!("jumping over to: {return_address:#x}");
 }
 
+fn handle_next_two(emu: &Emulator) {
+    let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+    debug!(
+        "next to over handler: current PC 0x{:x} -> jumping to 0x{:x}",
+        current_pc,
+        current_pc + 8
+    );
+    emu.current_cpu()
+        .unwrap()
+        .write_reg(Regs::Pc, current_pc + 8)
+        .unwrap();
+}
+
 fn handle_second_clade(emu: &Emulator) {
     let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
     let old_r3: u32 = emu.current_cpu().unwrap().read_reg(Regs::R3).unwrap();
@@ -265,6 +292,105 @@ fn handle_zeroing_yet_another(emu: &Emulator) {
         .write_reg(Regs::Pc, 0xfe1012c0u32)
         .unwrap();
 }
+
+fn handle_clade_loading(emu: &Emulator, sections: Vec<Section>) {
+    for section in sections {
+        info!("Loading section {:?}", section.name);
+        // only load clade sections
+        if section.section_type == SectionType::Clade {
+            let file_path = Path::new(&section.file);
+
+            let raw_bytes: Vec<u8> = fs::read(file_path).expect(&format!(
+                "FATAL: Failed to load section '{}', unable to read file",
+                section.name
+            ));
+
+            let data: Vec<u8>;
+            // if format is hex covert to raw bytes
+            match section.format {
+                SectionFormat::Hex => {
+                    let hex_string = std::str::from_utf8(&raw_bytes)
+                        .expect(&format!("FATAL: Failed to load section '{}', file contains non-UTF-8 characters for hex decoding", section.name))
+                        .trim();
+
+                    data = decode_hex(hex_string).expect(&format!(
+                        "FATAL: Failed to load section '{}', unable to convert from hex",
+                        section.name
+                    ));
+                }
+                SectionFormat::Raw => data = raw_bytes,
+            }
+            debug!("Bytes: {:?}", &data[..10]);
+
+            unsafe {
+                emu.write_mem(section.address, &data);
+            }
+            info!("Section {:?} loaded at {:?}", section.name, section.address)
+        }
+    }
+    let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+    let return_address: u32 = emu.current_cpu().unwrap().read_return_address().unwrap();
+    debug!(
+        "Jump over handler: current PC 0x{:x} -> jumping to 0x{:x}",
+        current_pc, return_address
+    );
+    emu.current_cpu()
+        .unwrap()
+        .write_reg(Regs::Pc, return_address)
+        .unwrap();
+    debug!("jumping over to: {return_address:#x}");
+}
+
+fn handle_skip_call(emu: &Emulator) {
+    let call_pointer: u32 = emu.current_cpu().unwrap().read_reg(Regs::R26).unwrap();
+    debug!("call pointer {:x}", call_pointer);
+    let mut call_address: [u8; 4] = [0; 4];
+    unsafe { emu.read_mem(call_pointer, &mut call_address) }
+    let call_address_int: u32 = u32::from_le_bytes(call_address);
+    debug!("call address {:x}", call_address_int);
+    if (call_address_int >= 0xdc000000 && call_address_int <= 0xdd000000)
+        || call_address_int == 0xd8ce2518
+    {
+        let mut distance = 4;
+        let mut new_call_address_int: u32;
+        loop {
+            unsafe { emu.read_mem(call_pointer + distance, &mut call_address) }
+            new_call_address_int = u32::from_le_bytes(call_address);
+
+            if !((new_call_address_int >= 0xdc000000 && new_call_address_int <= 0xdd000000)
+                || new_call_address_int == 0xd8ce2518)
+            {
+                break;
+            }
+
+            distance += 4;
+        }
+        emu.current_cpu()
+            .unwrap()
+            .write_reg(Regs::R0, new_call_address_int)
+            .unwrap();
+        emu.current_cpu()
+            .unwrap()
+            .write_reg(Regs::R26, call_pointer + distance)
+            .unwrap();
+        debug!(
+            "changing bad call {:x} -> {:x}, dist: {:?}",
+            call_address_int, new_call_address_int, distance
+        );
+    } else {
+        emu.current_cpu()
+            .unwrap()
+            .write_reg(Regs::R0, call_address_int)
+            .unwrap();
+        debug!("allowed good call {:x}", call_address_int);
+    }
+    let current_pc: u32 = emu.current_cpu().unwrap().read_reg(Regs::Pc).unwrap();
+    emu.current_cpu()
+        .unwrap()
+        .write_reg(Regs::Pc, current_pc + 4)
+        .unwrap();
+}
+
 /*
 fn handle_skipping_hardware_init(emu: &Emulator) {
     unsafe {

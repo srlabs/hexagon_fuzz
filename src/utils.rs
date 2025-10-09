@@ -4,7 +4,8 @@ use crate::{
 };
 use libafl_qemu::{Emulator, FastSnapshot, Regs};
 use log::{debug, info};
-use std::env;
+use std::fmt::Write;
+use std::{env, num::ParseIntError};
 
 /// Runs the emulator without fuzzing, continuously handling breakpoints.
 ///
@@ -24,7 +25,6 @@ pub(crate) fn run_no_fuzzer(config: Config) -> ! {
     set_breakpoints(&emu, config.clone());
     info!("Breakpoints set");
 
-    
     unsafe {
         let _ = emu.run();
     }
@@ -94,7 +94,10 @@ pub(crate) fn boot_firmware(config: &Config, emu: &Emulator) -> Option<FastSnaps
                 .unwrap()
                 .write_reg(Regs::Pc, config.fuzz_target_address)
                 .unwrap();
-            info!("app init done, creating snapshot at fuzz target: {:#x}", config.fuzz_target_address);
+            info!(
+                "app init done, creating snapshot at fuzz target: {:#x}",
+                config.fuzz_target_address
+            );
             return Some(emu.create_fast_snapshot(true));
         }
 
@@ -119,4 +122,19 @@ pub(crate) fn init_qemu(config: &Config) -> Emulator {
     debug!("Available QEMU devices: {:?}", devices);
 
     emu
+}
+
+pub fn decode_hex(s: &str) -> Result<Vec<u8>, ParseIntError> {
+    (0..s.len())
+        .step_by(2)
+        .map(|i| u8::from_str_radix(&s[i..i + 2], 16))
+        .collect()
+}
+
+pub fn encode_hex(bytes: &[u8]) -> String {
+    let mut s = String::with_capacity(bytes.len() * 2);
+    for &b in bytes {
+        write!(&mut s, "{:02x}", b).unwrap();
+    }
+    s
 }
